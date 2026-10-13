@@ -1,0 +1,15 @@
+[build]
+  publish = "public"
+
+# Proxy all /api/* and socket.io requests to the backend on Railway
+[[redirects]]
+  from = "/api/*"
+  to = "https://YOUR-RAILWAY-APP.railway.app/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/socket.io/*"
+  to = "https://YOUR-RAILWAY-APP.railway.app/socket.io/:splat"
+  status = 200
+  force = true
