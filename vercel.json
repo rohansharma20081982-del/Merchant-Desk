@@ -1,15 +1,9 @@
 {
   "version": 2,
-  "builds": [
+  "rewrites": [
     {
-      "src": "merchant-desk-api/src/server.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "merchant-desk-api/src/server.js"
+      "source": "/(.*)",
+      "destination": "/merchant-desk-api/api/index.js"
     }
   ]
 }
