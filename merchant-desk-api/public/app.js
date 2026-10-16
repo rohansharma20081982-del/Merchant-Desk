@@ -379,23 +379,146 @@ function hero(label, big, a, aLbl, b, bLbl) {
     + '<span class="rate num">1:1 INR Escrow Protection</span></section>';
 }
 
-/* ---------- views: sign in ---------- */
+/* ---------- views: landing page & platform sign in ---------- */
 function authView() {
   var reg = V.authMode === 'register';
-  return '<div class="auth">'
-    + '<div class="logo xl" aria-hidden="true">₹</div><h1>INR Merchant Desk</h1>'
-    + '<p class="muted" style="margin:0">Direct INR to INR escrow desk with verified accounts and live chat.</p>'
-    + '<div class="seg" role="tablist"><button type="button" role="tab" aria-selected="' + !reg + '" data-a="auth-mode" data-m="login">Sign in</button>'
-    + '<button type="button" role="tab" aria-selected="' + reg + '" data-a="auth-mode" data-m="register">Create account</button></div>'
+  var l = S.cfg.limits || { minInr: 500, maxInr: 100000, dailyInr: 500000 };
+
+  var h = '<div class="landing-wrap">'
+    // 1. Top Navigation Bar
+    + '<header class="landing-nav">'
+    + '<div class="landing-nav-inner">'
+    + '<div class="landing-brand"><span class="logo" aria-hidden="true">₹</span><span><b>INR Merchant Desk</b></span></div>'
+    + '<nav class="landing-links" aria-label="Landing Navigation">'
+    + '<a href="#features">Features</a>'
+    + '<a href="#how-it-works">How It Works</a>'
+    + '<a href="#security">Security</a>'
+    + '<a href="#limits">Limits</a>'
+    + '</nav>'
+    + '<div class="landing-nav-actions">'
+    + '<button class="back" data-a="toggle-theme" aria-label="Toggle theme" title="Toggle theme" style="width:36px;height:36px;color:var(--muted)">' + ic(isDarkMode() ? 'sun' : 'moon', 18) + '</button>'
+    + '<button class="btn primary glow" data-a="scroll-auth">' + ic('lock', 16) + '<span>Open Platform</span></button>'
+    + '</div>'
+    + '</div>'
+    + '</header>'
+
+    // 2. Hero Section
+    + '<section class="landing-hero">'
+    + '<div class="hero-badge">' + ic('shield', 16) + '<span>100% Escrow-Protected INR Desk</span></div>'
+    + '<h1 class="landing-title">Direct INR P2P Transfers with Bank-Grade Escrow Security</h1>'
+    + '<p class="landing-lead">Send and receive Indian Rupees with zero counterparty risk. KYC-verified merchants, direct UPI settlements, and mathematical escrow guarantee every transfer.</p>'
+    + '<div class="landing-cta-row">'
+    + '<button class="btn primary xl glow" data-a="scroll-auth">' + ic('lock', 18) + '<span>Open Platform</span></button>'
+    + '<a class="btn ghost xl" href="#how-it-works"><span>How It Works &darr;</span></a>'
+    + '</div>'
+    + '<div class="landing-metrics">'
+    + '<div class="metric-item"><b class="num">₹0</b><span>Platform Fee</span></div>'
+    + '<div class="metric-item"><b class="num">1:1</b><span>Direct Rupee Rate</span></div>'
+    + '<div class="metric-item"><b class="num">15 Min</b><span>Escrow Window</span></div>'
+    + '<div class="metric-item"><b class="num">100%</b><span>Name-Matched UPI</span></div>'
+    + '</div>'
+    // Hero Showcase Image
+    + '<div class="landing-showcase">'
+    + '<img class="showcase-img" src="/images/escrow_hero.jpg" alt="Digital Escrow Secure Desk Showcase" width="1280" height="720">'
+    + '<div class="showcase-caption"><span class="pill good"><i></i>Automated Escrow Active</span><span>Verified Indian Banking & Direct UPI Settlement</span></div>'
+    + '</div>'
+    + '</section>'
+
+    // 3. Platform Access Portal (Sign in / Registration Form)
+    + '<section class="auth-section" id="platform-access">'
+    + '<div class="auth-card">'
+    + '<div class="auth-card-head">'
+    + '<div class="logo xl" aria-hidden="true" style="margin:0 auto 12px">₹</div>'
+    + '<h2>INR Trading Platform Portal</h2>'
+    + '<p class="muted small" style="margin:4px 0 0">Access your verified desk to place orders, receive payments, or manage your escrow balance.</p>'
+    + '</div>'
+    + '<div class="seg" role="tablist">'
+    + '<button type="button" role="tab" aria-selected="' + !reg + '" data-a="auth-mode" data-m="login">Sign in</button>'
+    + '<button type="button" role="tab" aria-selected="' + reg + '" data-a="auth-mode" data-m="register">Create account</button>'
+    + '</div>'
     + '<form id="auth-form" class="stack" novalidate>'
     + (reg ? field('a-name', 'Full name', 'text', 'name') : '')
-    + field('a-email', 'Email', 'email', 'email', 'inputmode="email" autocapitalize="off"')
+    + field('a-email', 'Email address', 'email', 'email', 'inputmode="email" autocapitalize="off"')
     + field('a-pass', 'Password' + (reg ? ' (10 or more characters)' : ''), 'password', reg ? 'new-password' : 'current-password')
     + (reg ? '<div class="opts" role="radiogroup" aria-label="Account type">'
       + '<label class="opt"><input type="radio" name="role" value="buyer" checked><b>I send INR</b><span>Send rupees with escrow protection</span></label>'
       + '<label class="opt"><input type="radio" name="role" value="merchant"><b>I receive INR</b><span>Receive rupees, release from escrow</span></label></div>' : '')
     + '<p class="err" id="auth-err" role="alert"></p>'
-    + '<button class="btn primary" type="submit">' + (reg ? 'Create account' : 'Sign in') + '</button></form></div>';
+    + '<button class="btn primary" type="submit">' + (reg ? 'Create account' : 'Sign in') + '</button>'
+    + '</form>'
+    + '</div>'
+    + '</section>'
+
+    // 4. How It Works Section
+    + '<section class="landing-section" id="how-it-works">'
+    + '<div class="section-badge">Simple 3-Step Process</div>'
+    + '<h2 class="section-title">How Escrow Protection Works</h2>'
+    + '<p class="section-lead">Funds never move without mathematical escrow security and two-way verification.</p>'
+    + '<div class="steps-grid">'
+    + '<div class="step-card"><div class="step-num">01</div><b>Order & Escrow Lock</b><p>Buyer chooses how much to send and selects an online receiver. The receiver’s funds are immediately locked in escrow.</p></div>'
+    + '<div class="step-card"><div class="step-num">02</div><b>Direct UPI Transfer</b><p>Buyer transfers funds directly from their own bank app to the receiver’s verified UPI ID within the 15-minute window.</p></div>'
+    + '<div class="step-card"><div class="step-num">03</div><b>Statement Release</b><p>The receiver verifies the credit in their bank statement and releases the escrow. The buyer receives the funds instantly.</p></div>'
+    + '</div>'
+    + '</section>'
+
+    // 5. Features Section
+    + '<section class="landing-section" id="features">'
+    + '<div class="section-badge">Built For Trust</div>'
+    + '<h2 class="section-title">Why Senders & Receivers Choose Us</h2>'
+    + '<div class="features-grid">'
+    + '<div class="feature-card"><span class="feature-icon">' + ic('shield', 22) + '</span><b>100% Legal Name-Match</b><p>Every UPI ID is verified against the receiver’s government PAN document. Third-party deposits and identity mismatch are strictly blocked.</p></div>'
+    + '<div class="feature-card"><span class="feature-icon">' + ic('lock', 22) + '</span><b>Zero Counterparty Risk</b><p>Receivers must lock 100% of the trade value before an order begins. If a buyer pays, the escrow guarantees the release.</p></div>'
+    + '<div class="feature-card"><span class="feature-icon">' + ic('chat', 22) + '</span><b>Order-Specific Live Chat</b><p>Each transaction has a private peer-to-peer live chat room for sharing bank references, transaction screenshots, and updates.</p></div>'
+    + '<div class="feature-card"><span class="feature-icon">' + ic('dispute', 22) + '</span><b>Fair Dispute Mediation</b><p>In case of bank delays or statement discrepancies, our 24/7 support team reviews proof and resolves the dispute fairly.</p></div>'
+    + '</div>'
+    + '</section>'
+
+    // 6. Limits & Guidelines Section
+    + '<section class="landing-section" id="limits">'
+    + '<div class="section-badge">Safety Rules</div>'
+    + '<h2 class="section-title">Platform Operating Limits</h2>'
+    + '<div class="limits-card">'
+    + '<dl class="kv">'
+    + '<div><dt>Per order value</dt><dd class="num">' + fmtInr(l.minInr) + ' to ' + fmtInr(l.maxInr) + '</dd></div>'
+    + '<div><dt>Payment window</dt><dd class="num">' + S.cfg.paymentWindowMinutes + ' minutes</dd></div>'
+    + '<div><dt>Exchange rate</dt><dd class="num">1 INR = 1 INR (1:1 Escrow)</dd></div>'
+    + '<div><dt>Max receiver daily volume</dt><dd class="num">' + fmtInr(l.dailyInr) + '</dd></div>'
+    + '</dl>'
+    + '</div>'
+    + '</section>'
+
+    // 7. Security Commitment Section
+    + '<section class="landing-section" id="security">'
+    + '<div class="security-banner">'
+    + '<span class="av" style="width:48px;height:48px;background:var(--brand);color:var(--brand-ink)">' + ic('shield', 26) + '</span>'
+    + '<div>'
+    + '<b style="font-size:17px;display:block">Zero Tolerance for Third-Party Transfers</b>'
+    + '<p class="muted small" style="margin:4px 0 0">To comply with banking standards and prevent chargebacks, buyers must send funds strictly from a bank account in their own verified name.</p>'
+    + '</div>'
+    + '<button class="btn primary glow" data-a="scroll-auth">Open Platform</button>'
+    + '</div>'
+    + '</section>'
+
+    // 8. Footer
+    + '<footer class="landing-footer">'
+    + '<div class="landing-footer-inner">'
+    + '<div class="landing-footer-col">'
+    + '<div class="landing-brand"><span class="logo" aria-hidden="true">₹</span><span><b>INR Merchant Desk</b></span></div>'
+    + '<p class="muted small" style="margin:6px 0 0">Direct Indian Rupee peer-to-peer transfer coordination with verified automated escrow.</p>'
+    + '</div>'
+    + '<div class="landing-footer-links">'
+    + '<div><b>Platform</b><a href="#how-it-works">How It Works</a><a href="#features">Features</a><a href="#limits">Limits</a></div>'
+    + '<div><b>Access</b><button class="link" data-a="scroll-auth">Sign In</button><button class="link" data-a="scroll-auth">Create Account</button></div>'
+    + '</div>'
+    + '</div>'
+    + '<div class="landing-footer-bottom">'
+    + '<span class="muted small">© ' + new Date().getFullYear() + ' INR Merchant Desk. All rights reserved.</span>'
+    + '<button class="link small" data-a="toggle-theme">' + (isDarkMode() ? 'Switch to Light Theme' : 'Switch to Dark Theme') + '</button>'
+    + '</div>'
+    + '</footer>'
+    + '</div>';
+
+  return h;
 }
 
 /* ---------- views: home ---------- */
@@ -1195,6 +1318,14 @@ var A = {
   'replace-account': function () { return open({ k: 'replace' }); },
   'open-transactions': function () { return open({ k: 'transactions' }); },
   'tx-filter': function (d) { D.transactionsFilter = d.f; render(); },
+  'scroll-auth': function () {
+    var el = document.getElementById('platform-access');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      var inp = document.getElementById('a-email');
+      if (inp) setTimeout(function () { inp.focus(); }, 350);
+    }
+  },
   'admin-kyc-filter': async function (d) {
     D.admin.kycFilter = d.f;
     await loadTab('kyc');
