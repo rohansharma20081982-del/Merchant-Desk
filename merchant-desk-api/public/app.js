@@ -78,7 +78,9 @@ var I = {
   inbox: '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
   arrowDownLeft: '<line x1="17" y1="7" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/>',
   arrowUpRight: '<line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/>',
-  history: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/>'
+  history: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/>',
+  eye: '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/>',
+  'eye-off': '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>'
 };
 function ic(n, s) {
   s = s || 22;
@@ -356,6 +358,15 @@ function cd(o) {
   return pad(Math.floor(s / 60)) + ':' + pad(s % 60);
 }
 function field(id, label, type, ac, extra) {
+  if (type === 'password') {
+    return '<div class="field"><label for="' + id + '">' + label + '</label>'
+      + '<div class="pass-wrap">'
+      + '<input class="input" id="' + id + '" type="password" autocomplete="' + ac + '" ' + (extra || '') + '>'
+      + '<button type="button" class="pass-eye" data-a="toggle-pass" data-id="' + id + '" aria-label="Show password" tabindex="-1">'
+      + ic('eye', 18)
+      + '</button>'
+      + '</div></div>';
+  }
   return '<div class="field"><label for="' + id + '">' + label + '</label><input class="input" id="' + id + '" type="' + type + '" autocomplete="' + ac + '" ' + (extra || '') + '></div>';
 }
 function copyBtn(v) { return '<button type="button" class="copy" data-a="copy" data-v="' + esc(v) + '">Copy</button>'; }
@@ -1294,6 +1305,15 @@ var A = {
   logout: function () { logout(); },
   'set-theme': function (d) { setTheme(d.th); },
   'toggle-theme': function () { setTheme(isDarkMode() ? 'light' : 'dark'); },
+  'toggle-pass': function (d) {
+    var inp = document.getElementById(d.id);
+    var btn = document.querySelector('[data-a="toggle-pass"][data-id="' + d.id + '"]');
+    if (!inp) return;
+    var show = inp.type === 'password';
+    inp.type = show ? 'text' : 'password';
+    if (btn) btn.innerHTML = ic(show ? 'eye-off' : 'eye', 18);
+    btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+  },
   'open-order': function (d) { return open({ k: 'order', id: d.id }); },
   'open-chat': function (d) { return open({ k: 'chat', id: d.id }); },
   'open-support': function () { return open({ k: 'support' }); },
