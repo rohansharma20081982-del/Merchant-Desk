@@ -9,7 +9,7 @@ function user(u) {
     name: u.name,
     email: u.email,
     role: u.role,
-    kyc: { status: u.kyc.status, legalName: u.kyc.legalName || null, rejectReason: u.kyc.rejectReason || null },
+    kyc: { status: u.kyc.status, legalName: u.kyc.legalName || null, panLast4: u.kyc.panLast4 || null, rejectReason: u.kyc.rejectReason || null },
     paymentAccount: u.paymentAccount && u.paymentAccount.upi
       ? { upi: u.paymentAccount.upi, holderName: u.paymentAccount.holderName, verifiedAt: u.paymentAccount.verifiedAt }
       : null,
@@ -17,6 +17,7 @@ function user(u) {
       ? { upi: u.pendingPaymentAccount.upi, submittedAt: u.pendingPaymentAccount.submittedAt }
       : null,
     online: u.online,
+    blocked: u.blocked || false,
     balance: { available: fromMinor(u.balance.available), escrow: fromMinor(u.balance.escrow) }
   };
 }

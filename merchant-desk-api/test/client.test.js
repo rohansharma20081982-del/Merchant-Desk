@@ -60,7 +60,27 @@ function makeEnv(role) {
     [/^\/api\/admin\/kyc/, () => ({ users: [{ id: 'u9', name: 'New Person', email: 'n@example.test', role: 'buyer', kyc: { status: 'pending', legalName: 'NEW PERSON' }, submittedAt: iso(60000), panLast4: 'ABCD' }] })],
     [/^\/api\/admin\/payment-accounts/, () => ({ accounts: [{ userId: 'm1', name: 'Meera Nair', kycLegalName: 'MEERA NAIR', upi: 'new@okhdfcbank', submittedAt: iso(60000) }] })],
     [/^\/api\/admin\/disputes/, () => ({ disputes: [dispute] })],
-    [/^\/api\/admin\/users/, () => ({ users: [users.merchant, users.buyer] })]
+    [/^\/api\/admin\/users/, () => ({ users: [users.merchant, users.buyer] })],
+    [/^\/api\/me\/transactions/, () => ({
+      summary: { available: 100, escrow: 0, totalIn: 100, totalOut: 0, count: 1 },
+      transactions: [{
+        id: 'tx1',
+        type: 'received_from_escrow',
+        title: 'Received from Escrow (#D043B46D)',
+        direction: 'in',
+        amount: 100,
+        availableAfter: 100,
+        escrowAfter: 0,
+        orderRef: 'D043B46D',
+        orderId: 'o1',
+        counterparty: 'Meera Nair',
+        createdAt: iso(60000)
+      }]
+    })],
+    [/^\/api\/support\/unread-count$/, () => ({ unread: 1 })],
+    [/^\/api\/support\/thread$/, () => ({ conversation: { id: 'c1', status: 'open' }, messages: [{ id: 'sm1', text: 'Hello support', senderRole: 'customer', senderName: 'Aman Kapoor', createdAt: iso(60000) }] })],
+    [/^\/api\/support\/admin\/inbox/, () => ({ conversations: [{ id: 'c1', status: 'open', customer: { name: 'Aman Kapoor', email: 'a@example.test', role: 'buyer' }, lastMessageText: 'Help needed', lastMessageAt: iso(60000), unreadAdminCount: 1 }], totalUnread: 1 })],
+    [/^\/api\/support\/admin\/conversations\/(\w+)$/, (m) => ({ conversation: { id: m[1], status: 'open', customer: { name: 'Aman Kapoor', email: 'a@example.test', role: 'buyer' } }, messages: [{ id: 'sm1', text: 'Help needed', senderRole: 'customer', senderName: 'Aman Kapoor', createdAt: iso(60000) }] })]
   ];
   const fetchStub = async (url) => {
     const r = routes.find(([re]) => re.test(url));
@@ -95,7 +115,7 @@ for (const role of ['merchant', 'buyer', 'admin']) {
     assert.ok(view().length > 100, 'first screen rendered');
     assert.equal(toast(), '', 'no error on first screen');
 
-    const tabs = role === 'admin' ? ['kyc', 'accounts', 'disputes', 'users'] : ['home', 'orders', 'chats', 'disputes', 'account'];
+    const tabs = role === 'admin' ? ['kyc', 'accounts', 'disputes', 'users', 'support'] : ['home', 'orders', 'chats', 'disputes', 'account'];
     for (const t of tabs) {
       env.el('#toast').textContent = '';
       await click(env, { a: 'tab', t });
@@ -119,6 +139,18 @@ for (const role of ['merchant', 'buyer', 'admin']) {
       await click(env, { a: 'new-dispute', id: 'o1' });
       assert.equal(toast(), '', 'new dispute form: ' + toast());
       assert.match(view(), /Open dispute/);
+
+      // customer support modal
+      env.el('#toast').textContent = '';
+      await click(env, { a: 'open-support' });
+      assert.equal(toast(), '', 'open support: ' + toast());
+      assert.match(view(), /Support Team|customer-support-form/);
+
+      // transaction history
+      env.el('#toast').textContent = '';
+      await click(env, { a: 'open-transactions' });
+      assert.equal(toast(), '', 'open transactions: ' + toast());
+      assert.match(view(), /Balance & Escrow Ledger|Received from Escrow/);
     }
     if (role === 'merchant') {
       await click(env, { a: 'tab', t: 'account' });
@@ -131,7 +163,19 @@ for (const role of ['merchant', 'buyer', 'admin']) {
     await click(env, { a: 'open-dispute', id: 'd1' });
     assert.equal(toast(), '', 'dispute detail: ' + toast());
     assert.match(view(), /What happened/);
-    if (role === 'admin') assert.match(view(), /Resolve dispute/);
+    if (role === 'admin') {
+      assert.match(view(), /Resolve dispute/);
+      // open admin support thread
+      await click(env, { a: 'tab', t: 'support' });
+      await click(env, { a: 'open-admin-support', id: 'c1' });
+      assert.equal(toast(), '', 'open admin support thread: ' + toast());
+      assert.match(view(), /Help needed/);
+
+      // check identity approval history filter
+      await click(env, { a: 'tab', t: 'kyc' });
+      await click(env, { a: 'admin-kyc-filter', f: 'history' });
+      assert.equal(toast(), '', 'admin kyc history filter: ' + toast());
+    }
   });
 }
 

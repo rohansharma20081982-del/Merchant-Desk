@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { z } = require('zod');
 const User = require('../models/User');
+const Order = require('../models/Order');
 const Dispute = require('../models/Dispute');
 const LedgerEntry = require('../models/LedgerEntry');
 const { HttpError } = require('../errors');
@@ -22,10 +23,57 @@ router.get('/users', ah(async (req, res) => {
   res.json({ users: rows.map((u) => S.user(u)) });
 }));
 
-/* ---- identity verification queue ---- */
+/* ---- identity verification queue and approval history ---- */
 router.get('/kyc', ah(async (req, res) => {
-  const rows = await User.find({ 'kyc.status': 'pending' }).sort({ 'kyc.submittedAt': 1 }).limit(100);
-  res.json({ users: rows.map((u) => ({ id: u.id, name: u.name, email: u.email, role: u.role, kyc: S.user(u).kyc, submittedAt: u.kyc.submittedAt, panLast4: u.kyc.panLast4 })) });
+  const status = req.query.status || 'pending';
+  let filter = { 'kyc.status': 'pending' };
+  let sort = { 'kyc.submittedAt': 1 };
+
+  if (status === 'history') {
+    filter = { 'kyc.status': { $in: ['verified', 'rejected'] } };
+    sort = { 'kyc.reviewedAt': -1 };
+  } else if (status === 'verified') {
+    filter = { 'kyc.status': 'verified' };
+    sort = { 'kyc.reviewedAt': -1 };
+  } else if (status === 'rejected') {
+    filter = { 'kyc.status': 'rejected' };
+    sort = { 'kyc.reviewedAt': -1 };
+  } else if (status === 'all') {
+    filter = { 'kyc.status': { $in: ['pending', 'verified', 'rejected'] } };
+    sort = { updatedAt: -1 };
+  }
+
+  const [rows, pendingCount, historyCount] = await Promise.all([
+    User.find(filter)
+      .populate('kyc.reviewedBy', 'name email')
+      .sort(sort)
+      .limit(100),
+    User.countDocuments({ 'kyc.status': 'pending' }),
+    User.countDocuments({ 'kyc.status': { $in: ['verified', 'rejected'] } })
+  ]);
+
+  res.json({
+    counts: { pending: pendingCount, history: historyCount },
+    users: rows.map((u) => {
+      const serialized = S.user(u);
+      return {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        kyc: {
+          ...serialized.kyc,
+          submittedAt: u.kyc.submittedAt,
+          reviewedAt: u.kyc.reviewedAt,
+          reviewedBy: u.kyc.reviewedBy
+            ? { id: u.kyc.reviewedBy._id, name: u.kyc.reviewedBy.name, email: u.kyc.reviewedBy.email }
+            : null
+        },
+        submittedAt: u.kyc.submittedAt,
+        reviewedAt: u.kyc.reviewedAt
+      };
+    })
+  });
 }));
 
 router.post('/kyc/:userId', ah(async (req, res) => {
@@ -119,6 +167,54 @@ router.get('/disputes', ah(async (req, res) => {
   const status = z.enum(['review', 'resolved']).default('review').parse(req.query.status);
   const rows = await Dispute.find({ status }).sort({ createdAt: 1 }).limit(100);
   res.json({ disputes: rows.map(S.dispute) });
+}));
+
+/* ---- order monitoring ---- */
+router.get('/orders', ah(async (req, res) => {
+  const q = z.object({
+    status: z.enum(['awaiting_payment', 'paid', 'completed', 'disputed', 'cancelled']).optional(),
+    limit: z.coerce.number().int().min(1).max(200).default(100),
+    before: z.string().datetime().optional()
+  }).parse(req.query);
+  const filter = {};
+  if (q.status) filter.status = q.status;
+  if (q.before) filter.createdAt = { $lt: new Date(q.before) };
+  const rows = await Order.find(filter)
+    .populate('merchant', 'name')
+    .populate('buyer', 'name')
+    .sort({ createdAt: -1 })
+    .limit(q.limit);
+  res.json({ orders: rows.map((o) => S.order(o, req.user)) });
+}));
+
+/* ---- block / unblock accounts ----
+   Blocked users get a 403 on every authenticated request. Their open orders continue but they
+   cannot place new ones, go online, or sign in again once their current token expires. ---- */
+router.post('/users/:id/block', ah(async (req, res) => {
+  objectId.parse(req.params.id);
+  const b = z.object({ reason: z.string().trim().min(5).max(300) }).parse(req.body);
+  const u = await User.findOneAndUpdate(
+    { _id: req.params.id, role: { $ne: 'admin' }, blocked: { $ne: true } },
+    { $set: { blocked: true, blockedAt: new Date(), blockReason: b.reason } },
+    { new: true }
+  );
+  if (!u) throw new HttpError(409, 'User not found or is already blocked');
+  // Take the merchant offline immediately so no new orders land
+  if (u.role === 'merchant' && u.online) {
+    await User.updateOne({ _id: u._id }, { $set: { online: false } });
+  }
+  res.json({ user: S.user(u) });
+}));
+
+router.post('/users/:id/unblock', ah(async (req, res) => {
+  objectId.parse(req.params.id);
+  const u = await User.findOneAndUpdate(
+    { _id: req.params.id, role: { $ne: 'admin' }, blocked: true },
+    { $set: { blocked: false }, $unset: { blockedAt: 1, blockReason: 1 } },
+    { new: true }
+  );
+  if (!u) throw new HttpError(409, 'User not found or is not blocked');
+  res.json({ user: S.user(u) });
 }));
 
 module.exports = router;

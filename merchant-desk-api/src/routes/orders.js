@@ -28,7 +28,15 @@ router.get('/merchants', requireRole('buyer'), ah(async (req, res) => {
   res.json({
     rate: fromMinor(cfg.rateMinor),
     limits: { minInr: fromMinor(cfg.minOrderMinor), maxInr: fromMinor(cfg.maxOrderMinor) },
-    merchants: rows.map((m) => ({ id: m.id, name: m.name, availableUsdt: fromMinor(m.balance.available) }))
+    merchants: rows.map((m) => ({
+      id: m.id,
+      name: m.name,
+      availableUsdt: fromMinor(m.balance.available),
+      paymentMethod: 'UPI',
+      minInr: fromMinor(cfg.minOrderMinor),
+      maxInr: fromMinor(cfg.maxOrderMinor),
+      online: m.online
+    }))
   });
 }));
 

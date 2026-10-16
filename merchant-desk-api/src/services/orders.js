@@ -149,7 +149,7 @@ async function cancel({ orderId, actorId, expiredOnly = false, reason = 'Cancell
     );
     if (!o) throw new HttpError(409, 'This order can no longer be cancelled');
     await returnToMerchant(o, session);
-    await sys(o._id, `Order cancelled. ${reason}. USDT returned to the merchant.`, session);
+    await sys(o._id, `Order cancelled. ${reason}. Escrow returned to the merchant.`, session);
     return o;
   });
   rt.orderUpdated(order);
@@ -169,7 +169,7 @@ async function release({ orderId, merchantId }) {
     );
     if (!o) throw new HttpError(409, 'This order is not waiting for your confirmation');
     await moveToBuyer(o, session);
-    await sys(o._id, `${usdt(o.usdtMinor)} released to the buyer.`, session);
+    await sys(o._id, `Payment confirmed. Order ${inr(o.inrMinor)} released to the buyer.`, session);
     return o;
   });
   rt.orderUpdated(order);

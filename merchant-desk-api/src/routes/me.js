@@ -14,11 +14,11 @@ router.use(requireAuth);
 
 router.get('/', (req, res) => res.json({ user: S.user(req.user) }));
 
-/* Identity verification. Only the legal name and the last 4 PAN characters are stored.
+/* Identity verification. Legal name and last 4 chars of PAN are stored.
    An admin (or a KYC provider you plug in) approves it. */
 const kycSchema = z.object({
   legalName: z.string().trim().min(3).max(80),
-  panLast4: z.string().regex(/^[A-Za-z0-9]{4}$/, 'Enter the last 4 characters of your PAN')
+  panLast4: z.string().trim().length(4).regex(/^[A-Z0-9]{4}$/i, 'Enter the last 4 characters of your PAN').optional()
 });
 
 router.post('/kyc', ah(async (req, res) => {
@@ -27,7 +27,7 @@ router.post('/kyc', ah(async (req, res) => {
   if (u.role === 'admin') throw new HttpError(403, 'Not available for admins');
   if (u.kyc.status === 'pending') throw new HttpError(409, 'Your verification is already in review');
   if (u.kyc.status === 'verified') throw new HttpError(409, 'You are already verified');
-  u.kyc = { status: 'pending', legalName: b.legalName, panLast4: b.panLast4.toUpperCase(), submittedAt: new Date() };
+  u.kyc = { status: 'pending', legalName: b.legalName, panLast4: b.panLast4 ? b.panLast4.toUpperCase() : undefined, submittedAt: new Date() };
   await u.save();
   res.json({ user: S.user(u) });
 }));
@@ -84,6 +84,93 @@ router.get('/stats', requireRole('merchant'), ah(async (req, res) => {
     today: { completed: today ? today.count : 0, volumeInr: today ? fromMinor(today.inr) : 0 },
     completionRate: total ? Math.round((100 * (n.completed || 0)) / total) : 100,
     openDisputes
+  });
+}));
+
+/* Customer transaction & transition history */
+router.get('/transactions', ah(async (req, res) => {
+  const LedgerEntry = require('../models/LedgerEntry');
+  const entries = await LedgerEntry.find({ user: req.user._id })
+    .populate({
+      path: 'order',
+      select: 'ref status inrMinor usdtMinor payTo buyer merchant createdAt completedAt cancelledAt',
+      populate: [
+        { path: 'buyer', select: 'name' },
+        { path: 'merchant', select: 'name' }
+      ]
+    })
+    .sort({ createdAt: -1 })
+    .limit(150);
+
+  const transactions = entries.map((e) => {
+    const o = e.order;
+    let title = 'Balance adjustment';
+    let direction = 'in'; // 'in' = credit, 'out' = debit, 'neutral'
+    let orderRef = o ? o.ref : null;
+    let orderId = o ? o._id : null;
+    let counterparty = null;
+
+    if (o) {
+      const isBuyer = String(o.buyer && (o.buyer._id || o.buyer)) === String(req.user._id);
+      counterparty = isBuyer ? (o.merchant && o.merchant.name) : (o.buyer && o.buyer.name);
+    }
+
+    switch (e.type) {
+      case 'received_from_escrow':
+        title = orderRef ? `Received from Escrow (#${orderRef})` : 'Received from Escrow';
+        direction = 'in';
+        break;
+      case 'escrow_lock':
+        title = orderRef ? `Escrow Locked for Order (#${orderRef})` : 'Escrow Locked';
+        direction = 'out';
+        break;
+      case 'escrow_release':
+        title = orderRef ? `Escrow Released to Buyer (#${orderRef})` : 'Escrow Released';
+        direction = 'out';
+        break;
+      case 'escrow_return':
+        title = orderRef ? `Escrow Refunded / Returned (#${orderRef})` : 'Escrow Returned';
+        direction = 'in';
+        break;
+      case 'admin_credit':
+        title = e.note || 'Wallet Balance Added by Admin';
+        direction = 'in';
+        break;
+      default:
+        title = e.note || e.type;
+        direction = 'neutral';
+    }
+
+    return {
+      id: e.id,
+      type: e.type,
+      title,
+      direction,
+      amount: fromMinor(e.amountMinor),
+      amountMinor: e.amountMinor,
+      availableAfter: fromMinor(e.availableAfter != null ? e.availableAfter : req.user.balance.available),
+      escrowAfter: fromMinor(e.escrowAfter != null ? e.escrowAfter : req.user.balance.escrow),
+      orderRef,
+      orderId,
+      counterparty,
+      orderStatus: o ? o.status : null,
+      note: e.note || null,
+      createdAt: e.createdAt
+    };
+  });
+
+  const totalIn = transactions.filter((t) => t.direction === 'in').reduce((acc, t) => acc + t.amount, 0);
+  const totalOut = transactions.filter((t) => t.direction === 'out').reduce((acc, t) => acc + t.amount, 0);
+
+  res.json({
+    summary: {
+      available: fromMinor(req.user.balance.available),
+      escrow: fromMinor(req.user.balance.escrow),
+      totalIn,
+      totalOut,
+      count: transactions.length
+    },
+    transactions
   });
 }));
 

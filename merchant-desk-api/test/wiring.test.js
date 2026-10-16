@@ -20,7 +20,7 @@ const req = (method, path, body, headers = {}) =>
 test('health check', async () => assert.equal((await req('GET', '/healthz')).status, 200));
 
 test('protected routes need a token', async () => {
-  for (const p of ['/api/me', '/api/orders', '/api/disputes', '/api/admin/kyc']) {
+  for (const p of ['/api/me', '/api/orders', '/api/disputes', '/api/admin/kyc', '/api/support/thread']) {
     assert.equal((await req('GET', p)).status, 401, p);
   }
 });

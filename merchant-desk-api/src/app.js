@@ -44,6 +44,7 @@ app.use('/api/me', require('./routes/me'));
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/disputes', require('./routes/disputes'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/support', require('./routes/support'));
 
 // The mobile web app. The service worker must never be cached so updates reach phones.
 app.use(

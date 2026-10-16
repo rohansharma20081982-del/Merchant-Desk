@@ -15,6 +15,7 @@ async function requireAuth(req, res, next) {
     }
     const user = await User.findById(payload.sub);
     if (!user) throw new HttpError(401, 'Sign in required');
+    if (user.blocked) throw new HttpError(403, 'Your account has been suspended. Contact support.');
     req.user = user;
     next();
   } catch (e) {

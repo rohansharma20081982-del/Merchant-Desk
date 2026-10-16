@@ -7,16 +7,21 @@ const userSchema = new Schema(
     passwordHash: { type: String, required: true, select: false },
     role: { type: String, enum: ['merchant', 'buyer', 'admin'], required: true },
 
-    // Identity check. Only the last 4 characters of the PAN are kept.
+    // Identity check. Legal name and last 4 chars of PAN are stored.
     kyc: {
       status: { type: String, enum: ['none', 'pending', 'verified', 'rejected'], default: 'none' },
       legalName: String,
-      panLast4: String,
+      panLast4: { type: String, maxlength: 4 },
       submittedAt: Date,
       reviewedAt: Date,
       reviewedBy: { type: Schema.Types.ObjectId, ref: 'User' },
       rejectReason: String
     },
+
+    // Account block. Blocked accounts cannot log in or place orders.
+    blocked: { type: Boolean, default: false },
+    blockedAt: Date,
+    blockReason: String,
 
     // The one verified payment account. The holder name must match kyc.legalName.
     paymentAccount: { upi: String, holderName: String, verifiedAt: Date },

@@ -30,7 +30,10 @@ function pad(n) { return String(n).padStart(2, '0'); }
 var S = { token: null, me: null, socket: null, cfg: { rate: 109, limits: { minInr: 500, maxInr: 100000 }, paymentWindowMinutes: 15 } };
 function blank() {
   return { orders: [], disputes: [], stats: null, merchants: null, buyUsdt: '', order: null, dispute: null,
-    msgs: {}, unread: {}, joined: {}, admin: { kyc: [], accounts: [], disputes: [], users: [] } };
+    transactions: [], transactionsSummary: null, transactionsFilter: 'all',
+    msgs: {}, unread: {}, joined: {},
+    support: { conv: null, msgs: [], unreadCount: 0, adminInbox: [], adminActive: null, adminMsgs: [], filter: 'all', search: '', totalUnread: 0 },
+    admin: { kyc: [], kycCounts: { pending: 0, history: 0 }, kycFilter: 'pending', accounts: [], disputes: [], orders: [], users: [] } };
 }
 var D = blank();
 var V = { tab: null, sub: null, stack: [], filter: 'all', authMode: 'login', dstatus: 'review', busy: false };
@@ -65,13 +68,71 @@ var I = {
   lock: '<rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>',
   x: '<path d="m6.5 6.5 11 11M17.5 6.5l-11 11"/>',
   info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8v.1"/>',
-  logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>'
+  logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>',
+  moon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
+  monitor: '<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  support: '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>',
+  search: '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+  inbox: '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+  arrowDownLeft: '<line x1="17" y1="7" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/>',
+  arrowUpRight: '<line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/>',
+  history: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/>'
 };
 function ic(n, s) {
   s = s || 22;
   return '<svg class="ic" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + I[n] + '</svg>';
 }
 function pill(c, t, dot) { return '<span class="pill ' + c + '">' + (dot ? '<i></i>' : '') + esc(t) + '</span>'; }
+
+/* ---------- theme ---------- */
+function getTheme() { return lsGet('md_theme') || 'system'; }
+function isDarkMode() {
+  var t = getTheme();
+  if (t === 'dark') return true;
+  if (t === 'light') return false;
+  return typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+function applyTheme(th) {
+  th = th || getTheme();
+  var root = typeof document !== 'undefined' && (document.documentElement || document.body);
+  if (root && typeof root.setAttribute === 'function') {
+    if (th === 'dark' || th === 'light') root.setAttribute('data-theme', th);
+    else if (root.removeAttribute) root.removeAttribute('data-theme');
+  }
+  var meta = typeof document !== 'undefined' && document.querySelector && document.querySelector('meta[name="theme-color"]');
+  if (meta && typeof meta.setAttribute === 'function') {
+    meta.setAttribute('content', isDarkMode() ? '#0b0f19' : '#059669');
+  }
+}
+function setTheme(th) {
+  lsSet('md_theme', th);
+  applyTheme(th);
+  render();
+  toast(th === 'dark' ? 'Dark mode enabled' : th === 'light' ? 'Light mode enabled' : 'System theme enabled');
+}
+function themeSection() {
+  var current = getTheme();
+  var opts = [
+    { id: 'light', label: 'Light mode', desc: 'Clean, simple and bright', icon: 'sun' },
+    { id: 'dark', label: 'Dark mode', desc: 'Sleek dark, easy on the eyes', icon: 'moon' },
+    { id: 'system', label: 'System preference', desc: 'Match your device settings', icon: 'monitor' }
+  ];
+  return '<section class="card stack" style="gap:12px">'
+    + '<div class="sec-head"><h2>Appearance</h2><span class="muted small">Theme</span></div>'
+    + '<p class="muted small" style="margin:0">Choose how Merchant Desk looks on this device.</p>'
+    + '<div class="theme-opts" role="radiogroup" aria-label="Theme selection">'
+    + opts.map(function (o) {
+      var sel = current === o.id;
+      return '<button type="button" class="theme-opt' + (sel ? ' active' : '') + '" data-a="set-theme" data-th="' + o.id + '" role="radio" aria-checked="' + sel + '">'
+        + '<span class="theme-opt-icon">' + ic(o.icon, 20) + '</span>'
+        + '<span class="theme-opt-text"><b>' + esc(o.label) + '</b><small>' + esc(o.desc) + '</small></span>'
+        + (sel ? '<span class="theme-opt-check">' + ic('check', 18) + '</span>' : '')
+        + '</button>';
+    }).join('')
+    + '</div></section>';
+}
 
 /* ---------- api ---------- */
 async function api(method, path, body, isForm) {
@@ -105,18 +166,73 @@ async function run(fn) {
   try { await fn(); } catch (e) { toast(fieldMsg(e)); } finally { V.busy = false; }
 }
 
-/* ---------- realtime ---------- */
 function connectSocket() {
   if (S.socket || typeof io !== 'function') return;
   S.socket = io({ auth: function (cb) { cb({ token: S.token }); } });
   S.socket.on('connect', function () {
     D.joined = {}; joinRooms();
     if (V.sub && V.sub.k === 'chat') joinRoom(V.sub.id);
+    if (V.sub && V.sub.k === 'support' && D.support.conv) joinSupportRoom(D.support.conv._id || D.support.conv.id);
+    if (V.sub && V.sub.k === 'admin-support' && V.sub.id) joinSupportRoom(V.sub.id);
   });
   S.socket.on('chat:message', onChatMessage);
+  S.socket.on('support:message', onSupportMessage);
+  S.socket.on('support:inbox', onSupportInbox);
+  S.socket.on('support:notify', onSupportNotify);
   S.socket.on('order:updated', function () { scheduleRefresh(); });
   S.socket.on('order:new', function () { toast('You have a new order'); });
   S.socket.on('order:paid', function () { toast('A buyer marked an order as paid'); });
+}
+function joinSupportRoom(id) {
+  if (!S.socket || !id) return;
+  S.socket.emit('support:join', String(id));
+}
+function onSupportMessage(data) {
+  var m = data && data.message, convId = data && data.conversationId;
+  if (!m) return;
+  if (V.sub && V.sub.k === 'support') {
+    if (!D.support.msgs.some(function (x) { return (x._id || x.id) === (m._id || m.id); })) {
+      D.support.msgs.push(m);
+      renderSupportMsgs();
+    }
+    return;
+  }
+  if (V.sub && V.sub.k === 'admin-support' && V.sub.id === convId) {
+    if (!D.support.adminMsgs.some(function (x) { return (x._id || x.id) === (m._id || m.id); })) {
+      D.support.adminMsgs.push(m);
+      renderSupportMsgs();
+    }
+    return;
+  }
+  if (S.me && S.me.role !== 'admin' && m.senderRole === 'admin') {
+    D.support.unreadCount = (D.support.unreadCount || 0) + 1;
+    toast('Support message received');
+    softRender();
+  }
+  if (S.me && S.me.role === 'admin') {
+    loadAdminSupportInboxQuiet();
+  }
+}
+function onSupportInbox() {
+  if (S.me && S.me.role === 'admin') loadAdminSupportInboxQuiet();
+}
+function onSupportNotify(data) {
+  if (S.me && S.me.role !== 'admin' && data && typeof data.unreadCustomerCount === 'number') {
+    D.support.unreadCount = data.unreadCustomerCount;
+    softRender();
+  }
+}
+async function loadAdminSupportInboxQuiet() {
+  try {
+    // 'unread' is a client-side filter; server understands 'open' and 'resolved' only
+    var f = D.support.filter;
+    var qs = (f === 'open' || f === 'resolved') ? '?status=' + f : '';
+    if (D.support.search && D.support.search.trim()) qs += (qs ? '&' : '?') + 'q=' + encodeURIComponent(D.support.search.trim());
+    var res = await api('GET', '/support/admin/inbox' + qs);
+    D.support.adminInbox = res.conversations || [];
+    D.support.totalUnread = res.totalUnread || 0;
+    if (V.tab === 'support' && !V.sub) softRender();
+  } catch (e) {}
 }
 function joinRoom(id) {
   if (!S.socket || D.joined[id]) return;
@@ -155,9 +271,24 @@ async function loadOrders() { D.orders = (await api('GET', '/orders?limit=100'))
 async function loadTab(tab, skipOrders) {
   var role = S.me.role;
   if (role === 'admin') {
-    if (tab === 'kyc') D.admin.kyc = (await api('GET', '/admin/kyc')).users;
+    if (tab === 'support') {
+      try {
+        var f = D.support.filter;
+        var qs = (f === 'open' || f === 'resolved') ? '?status=' + f : '';
+        var res = await api('GET', '/support/admin/inbox' + qs);
+        D.support.adminInbox = res.conversations || [];
+        D.support.totalUnread = res.totalUnread || 0;
+      } catch (e) { D.support.adminInbox = []; }
+    }
+    if (tab === 'kyc') {
+      var kf = D.admin.kycFilter || 'pending';
+      var r = await api('GET', '/admin/kyc?status=' + encodeURIComponent(kf));
+      D.admin.kyc = (r && r.users) ? r.users : (Array.isArray(r) ? r : []);
+      if (r && r.counts) D.admin.kycCounts = r.counts;
+    }
     if (tab === 'accounts') D.admin.accounts = (await api('GET', '/admin/payment-accounts')).accounts;
     if (tab === 'disputes') D.admin.disputes = (await api('GET', '/admin/disputes?status=' + V.dstatus)).disputes;
+    if (tab === 'orders') D.admin.orders = (await api('GET', '/admin/orders')).orders;
     if (tab === 'users') D.admin.users = (await api('GET', '/admin/users')).users;
     return;
   }
@@ -180,6 +311,22 @@ async function loadSub(s) {
     s.orderId = D.dispute.orderId;
     D.order = (await api('GET', '/orders/' + s.orderId)).order;
     if (S.me.role === 'admin') D.msgs[s.orderId] = (await api('GET', '/orders/' + s.orderId + '/messages?limit=100')).messages;
+  } else if (s.k === 'support') {
+    var res = await api('GET', '/support/thread');
+    D.support.conv = res.conversation;
+    D.support.msgs = res.messages || [];
+    D.support.unreadCount = 0;
+    joinSupportRoom(res.conversation._id || res.conversation.id);
+  } else if (s.k === 'admin-support') {
+    var res = await api('GET', '/support/admin/conversations/' + s.id);
+    D.support.adminActive = res.conversation;
+    D.support.adminMsgs = res.messages || [];
+    joinSupportRoom(s.id);
+    loadAdminSupportInboxQuiet();
+  } else if (s.k === 'transactions') {
+    var txRes = await api('GET', '/me/transactions');
+    D.transactions = (txRes && txRes.transactions) || [];
+    D.transactionsSummary = (txRes && txRes.summary) || null;
   }
 }
 
@@ -227,17 +374,17 @@ function orderRow(o) {
 }
 
 function hero(label, big, a, aLbl, b, bLbl) {
-  return '<section class="hero"><div class="lbl">' + label + '</div><div class="big num">' + fmtU(big) + '<small>USDT</small></div>'
-    + (aLbl ? '<div class="hero-grid"><div><b>' + fmtU(a) + '</b><span>' + aLbl + '</span></div><div><b>' + fmtU(b) + '</b><span>' + bLbl + '</span></div></div>' : '')
-    + '<span class="rate num">1 USDT = ₹' + Number(S.cfg.rate).toFixed(2) + '</span></section>';
+  return '<section class="hero"><div class="lbl">' + label + '</div><div class="big num">' + fmtInr(big) + '</div>'
+    + (aLbl ? '<div class="hero-grid"><div><b>' + fmtInr(a) + '</b><span>' + aLbl + '</span></div><div><b>' + fmtInr(b) + '</b><span>' + bLbl + '</span></div></div>' : '')
+    + '<span class="rate num">1:1 INR Escrow Protection</span></section>';
 }
 
 /* ---------- views: sign in ---------- */
 function authView() {
   var reg = V.authMode === 'register';
   return '<div class="auth">'
-    + '<div class="logo xl" aria-hidden="true">₮</div><h1>USDT Merchant Desk</h1>'
-    + '<p class="muted" style="margin:0">Trade USDT for rupees with escrow, verified accounts and live chat.</p>'
+    + '<div class="logo xl" aria-hidden="true">₹</div><h1>INR Merchant Desk</h1>'
+    + '<p class="muted" style="margin:0">Direct INR to INR escrow desk with verified accounts and live chat.</p>'
     + '<div class="seg" role="tablist"><button type="button" role="tab" aria-selected="' + !reg + '" data-a="auth-mode" data-m="login">Sign in</button>'
     + '<button type="button" role="tab" aria-selected="' + reg + '" data-a="auth-mode" data-m="register">Create account</button></div>'
     + '<form id="auth-form" class="stack" novalidate>'
@@ -245,8 +392,8 @@ function authView() {
     + field('a-email', 'Email', 'email', 'email', 'inputmode="email" autocapitalize="off"')
     + field('a-pass', 'Password' + (reg ? ' (10 or more characters)' : ''), 'password', reg ? 'new-password' : 'current-password')
     + (reg ? '<div class="opts" role="radiogroup" aria-label="Account type">'
-      + '<label class="opt"><input type="radio" name="role" value="buyer" checked><b>I buy USDT</b><span>Pay rupees, receive USDT</span></label>'
-      + '<label class="opt"><input type="radio" name="role" value="merchant"><b>I sell USDT</b><span>Receive rupees, release USDT</span></label></div>' : '')
+      + '<label class="opt"><input type="radio" name="role" value="buyer" checked><b>I send INR</b><span>Send rupees with escrow protection</span></label>'
+      + '<label class="opt"><input type="radio" name="role" value="merchant"><b>I receive INR</b><span>Receive rupees, release from escrow</span></label></div>' : '')
     + '<p class="err" id="auth-err" role="alert"></p>'
     + '<button class="btn primary" type="submit">' + (reg ? 'Create account' : 'Sign in') + '</button></form></div>';
 }
@@ -258,14 +405,15 @@ function merchantHome() {
   var st = D.stats || { today: { completed: 0, volumeInr: 0 }, completionRate: 100, openDisputes: 0 };
   var on = me.online && !gate;
   var h = '<div class="stack">';
-  h += hero('Total USDT', b.available + b.escrow, b.available, 'Available', b.escrow, 'In escrow');
+  h += hero('Total INR Balance', b.available + b.escrow, b.available, 'Available', b.escrow, 'In escrow');
+  h += '<div class="quick-actions"><button class="btn ghost sm" data-a="open-transactions">' + ic('history', 16) + '<span>Transaction History</span></button></div>';
   h += '<section class="card toggle"><div><b>' + (on ? 'Receiving orders' : 'Not receiving orders') + '</b><span class="muted small">'
     + esc(gate || (on ? 'Verified buyers can place orders against your balance.' : 'Turn on to start receiving buyer orders.')) + '</span></div>'
     + '<button class="switch" role="switch" aria-label="Receive orders" aria-checked="' + on + '" data-a="toggle-online"' + (gate ? ' disabled' : '') + '></button></section>';
   if (gate) h += '<button class="btn gold" data-a="tab" data-t="account">Finish setup</button>';
   if (act.length) {
     h += '<section class="sec"><h2>Needs your action</h2><div class="list">' + act.map(orderRow).join('') + '</div>'
-      + '<p class="muted small" style="margin:0">Check your bank app. Release the USDT only after the full amount has arrived from the buyer’s own account.</p></section>';
+      + '<p class="muted small" style="margin:0">Check your bank app. Release the INR only after the full amount has arrived from the buyer’s own account.</p></section>';
   }
   h += '<section class="sec"><h2>Today</h2><div class="stats">'
     + '<div class="stat"><span>Completed</span><b class="num">' + st.today.completed + '</b></div>'
@@ -281,26 +429,28 @@ function buyerHome() {
   var me = S.me, ver = me.kyc.status === 'verified';
   var act = D.orders.filter(function (o) { return o.status === 'awaiting_payment'; });
   var h = '<div class="stack">';
-  h += hero('Your USDT', me.balance.available);
+  h += hero('Your INR Balance', me.balance.available);
+  h += '<div class="quick-actions"><button class="btn ghost sm" data-a="open-transactions">' + ic('history', 16) + '<span>Transaction History</span></button></div>';
   if (!ver) {
     var k = me.kyc.status;
     h += '<section class="note ' + (k === 'rejected' ? 'bad' : '') + '"><span>' + ic('shield', 20) + '</span><span>'
-      + (k === 'pending' ? 'Your identity check is in review. You can buy once it is approved.'
+      + (k === 'pending' ? 'Your identity check is in review. You can send once it is approved.'
         : k === 'rejected' ? 'Your identity check was rejected: ' + esc(me.kyc.rejectReason || 'please resubmit') + '.'
-          : 'Verify your identity before you buy. Payments must come from an account in your own name.') + '</span></section>';
+          : 'Verify your identity before you send. Payments must come from an account in your own name.') + '</span></section>';
     if (k !== 'pending') h += '<button class="btn gold" data-a="tab" data-t="account">Verify identity</button>';
   } else {
-    h += '<section class="card stack" style="gap:12px"><h2>Buy USDT</h2>'
-      + '<div class="field"><label for="buy-usdt">How many USDT?</label><input class="input" id="buy-usdt" inputmode="decimal" autocomplete="off" placeholder="For example 50" value="' + esc(D.buyUsdt) + '"></div>'
+    h += '<section class="card stack" style="gap:12px"><h2>Send INR</h2>'
+      + '<div class="field"><label for="buy-usdt">How much INR to send?</label><input class="input" id="buy-usdt" inputmode="numeric" autocomplete="off" placeholder="For example 1000" value="' + esc(D.buyUsdt) + '"></div>'
       + '<p class="est" id="est">' + estimate(D.buyUsdt) + '</p>'
-      + '<button class="btn primary" data-a="find">Find merchants</button></section>';
+      + '<button class="btn primary" data-a="find">Find receivers</button></section>';
     if (D.merchants) {
-      h += '<section class="sec"><h2>Available merchants</h2>' + (D.merchants.length
+      h += '<section class="sec"><h2>Available receivers</h2>' + (D.merchants.length
         ? '<div class="list">' + D.merchants.map(function (m) {
-          return '<div class="row"><span class="av">' + initials(m.name) + '</span><span class="mid"><b>' + esc(m.name) + '</b><span>' + fmtU(m.availableUsdt) + ' USDT available</span></span>'
-            + '<button class="btn gold sm" data-a="buy" data-id="' + m.id + '">Buy</button></div>';
+          return '<div class="row"><span class="av">' + initials(m.name) + '</span><span class="mid"><b>' + esc(m.name) + '</b>'
+            + '<span>' + esc(m.paymentMethod || 'UPI') + ' · ' + fmtInr(m.minInr || 500) + '–' + fmtInr(m.maxInr || 100000) + ' · ' + (m.online ? 'Online' : 'Offline') + '</span></span>'
+            + '<button class="btn gold sm" data-a="buy" data-id="' + m.id + '">Send</button></div>';
         }).join('') + '</div>'
-        : '<div class="card empty">No merchant can fill this amount right now. Try a smaller amount.</div>') + '</section>';
+        : '<div class="card empty">No receiver can fill this amount right now. Try a smaller amount.</div>') + '</section>';
     }
   }
   if (act.length) h += '<section class="sec"><h2>Waiting for your payment</h2><div class="list">' + act.map(orderRow).join('') + '</div></section>';
@@ -311,9 +461,9 @@ function buyerHome() {
 function estimate(v) {
   var n = Number(v);
   if (!v || !isFinite(n) || n <= 0) return '';
-  var inr = n * S.cfg.rate, l = S.cfg.limits;
-  if (inr < l.minInr || inr > l.maxInr) return 'You would pay ' + fmtInr(inr) + '. Orders must be between ' + fmtInr(l.minInr) + ' and ' + fmtInr(l.maxInr) + '.';
-  return 'You would pay ' + fmtInr(inr) + ' at ₹' + Number(S.cfg.rate).toFixed(2) + ' per USDT.';
+  var l = S.cfg.limits;
+  if (n < l.minInr || n > l.maxInr) return 'Orders must be between ' + fmtInr(l.minInr) + ' and ' + fmtInr(l.maxInr) + '.';
+  return 'You will send ' + fmtInr(n) + ' (1:1 direct INR escrow).';
 }
 
 /* ---------- views: orders, chats, disputes ---------- */
@@ -329,7 +479,11 @@ function ordersView() {
   var chips = [['all', 'All'], ['open', 'Open'], ['closed', 'Closed'], ['disputed', 'Disputed']].map(function (c) {
     return '<button class="chip" aria-pressed="' + (f === c[0]) + '" data-a="filter" data-f="' + c[0] + '">' + c[1] + '</button>';
   }).join('');
-  return '<div class="stack"><div class="chips" role="group" aria-label="Filter orders">' + chips + '</div>'
+  return '<div class="stack">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">'
+    + '<div class="chips" role="group" aria-label="Filter orders">' + chips + '</div>'
+    + '<button class="btn ghost sm" data-a="open-transactions" style="flex:none;font-size:12px;padding:6px 10px;height:auto">' + ic('history', 14) + '<span>Ledger</span></button>'
+    + '</div>'
     + (list.length ? '<div class="list">' + list.map(orderRow).join('') + '</div>' : '<div class="card empty">No orders in this view.</div>') + '</div>';
 }
 
@@ -338,7 +492,7 @@ function chatsView() {
   return '<div class="stack"><div class="list">' + D.orders.map(function (o) {
     var st = ST[o.status];
     return '<button class="row" data-a="open-chat" data-id="' + o.id + '"><span class="av">' + initials(cp(o)) + '</span>'
-      + '<span class="mid"><b>' + esc(cp(o)) + '</b><span>Order #' + esc(o.ref) + ' · ' + fmtU(o.usdt) + ' USDT</span></span>'
+      + '<span class="mid"><b>' + esc(cp(o)) + '</b><span>Order #' + esc(o.ref) + ' · ' + fmtInr(o.inr || o.usdt) + '</span></span>'
       + '<span class="end">' + (D.unread[o.id] ? '<i class="dot" aria-label="Unread messages"></i>' : '') + pill(st.c, st.l) + '</span></button>';
   }).join('') + '</div></div>';
 }
@@ -347,8 +501,8 @@ function disputesView() {
   var h = '<div class="stack"><section class="card stack" style="gap:10px"><h2>How disputes work</h2>'
     + '<ol class="small" style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px">'
     + '<li>Open a dispute from the order and attach proof such as a bank statement.</li>'
-    + '<li>The USDT stays in escrow while the dispute is open.</li>'
-    + '<li>Support reviews both sides and releases the USDT to the right person.</li></ol></section>';
+    + '<li>The INR stays in escrow while the dispute is open.</li>'
+    + '<li>Support reviews both sides and releases the INR to the right person.</li></ol></section>';
   h += D.disputes.length ? '<div class="list">' + D.disputes.map(function (d) {
     var o = D.orders.filter(function (x) { return x.id === d.orderId; })[0];
     return '<button class="row" data-a="open-dispute" data-id="' + d.id + '"><span class="av bad">' + ic('dispute', 20) + '</span>'
@@ -362,10 +516,10 @@ function disputesView() {
 function steps(o) {
   var L, st;
   switch (o.status) {
-    case 'awaiting_payment': L = ['Order placed', 'Buyer pays the merchant’s verified account', 'Merchant confirms the money arrived', 'USDT released from escrow']; st = ['done', 'now', 'todo', 'todo']; break;
-    case 'paid': L = ['Order placed', 'Buyer marked the payment as sent', 'Merchant confirms the money arrived', 'USDT released from escrow']; st = ['done', 'done', 'now', 'todo']; break;
-    case 'completed': L = ['Order placed', 'Buyer paid the merchant’s verified account', 'Merchant confirmed the money arrived', 'USDT released to the buyer']; st = ['done', 'done', 'done', 'done']; break;
-    case 'disputed': L = ['Order placed', 'Buyer marked the payment as sent', 'On hold for dispute review', 'USDT released from escrow']; st = ['done', 'done', 'hold', 'todo']; break;
+    case 'awaiting_payment': L = ['Order placed', 'Buyer pays the merchant’s verified account', 'Merchant confirms the money arrived', 'INR released from escrow']; st = ['done', 'now', 'todo', 'todo']; break;
+    case 'paid': L = ['Order placed', 'Buyer marked the payment as sent', 'Merchant confirms the money arrived', 'INR released from escrow']; st = ['done', 'done', 'now', 'todo']; break;
+    case 'completed': L = ['Order placed', 'Buyer paid the merchant’s verified account', 'Merchant confirmed the money arrived', 'INR released to the buyer']; st = ['done', 'done', 'done', 'done']; break;
+    case 'disputed': L = ['Order placed', 'Buyer marked the payment as sent', 'On hold for dispute review', 'INR released from escrow']; st = ['done', 'done', 'hold', 'todo']; break;
     default: L = ['Order placed', 'Cancelled' + (o.cancelReason ? ': ' + o.cancelReason : '')]; st = ['done', 'stop'];
   }
   return '<ol class="tl">' + L.map(function (t, i) {
@@ -378,19 +532,19 @@ function orderView() {
   var o = D.order, me = S.me, role = o.viewerRole, st = ST[o.status];
   var dsp = D.disputes.filter(function (x) { return x.orderId === o.id; })[0];
   var h = '<div class="stack">';
-  h += '<section class="card sum"><span class="muted small">' + (role === 'buyer' ? 'You pay' : 'Buyer pays') + '</span><div class="big num">' + fmtInr(o.inr) + '</div>'
-    + '<div class="muted num">' + fmtU(o.usdt) + ' USDT at ₹' + Number(o.rate).toFixed(2) + '</div>' + pill(st.c, st.l, true) + '</section>';
+  h += '<section class="card sum"><span class="muted small">' + (role === 'buyer' ? 'You pay' : 'Buyer pays') + '</span><div class="big num">' + fmtInr(o.inr || o.usdt) + '</div>'
+    + '<div class="muted num">1:1 INR Escrow</div>' + pill(st.c, st.l, true) + '</section>';
 
   if (o.status === 'awaiting_payment') {
     h += role === 'buyer'
-      ? '<section class="note"><span>' + ic('clock', 20) + '</span><span>Pay <b class="num">' + fmtInr(o.inr) + '</b> within <b class="num" id="cd">' + cd(o) + '</b> from a bank account in your own name (' + esc(me.kyc.legalName || me.name) + '). Payments from someone else’s account are refused.</span></section>'
-      : '<section class="note"><span>' + ic('clock', 20) + '</span><span>Waiting for ' + esc(o.buyer.name) + ' to pay. The order closes in <b class="num" id="cd">' + cd(o) + '</b> and your USDT returns to your balance.</span></section>';
+      ? '<section class="note"><span>' + ic('clock', 20) + '</span><span>Pay <b class="num">' + fmtInr(o.inr || o.usdt) + '</b> within <b class="num" id="cd">' + cd(o) + '</b> from a bank account in your own name (' + esc(me.kyc.legalName || me.name) + '). Payments from someone else’s account are refused.</span></section>'
+      : '<section class="note"><span>' + ic('clock', 20) + '</span><span>Waiting for ' + esc(o.buyer.name) + ' to pay. The order closes in <b class="num" id="cd">' + cd(o) + '</b> and your INR returns to your balance.</span></section>';
   }
   if (role === 'buyer' && (o.status === 'awaiting_payment' || o.status === 'paid')) {
     h += '<section class="card stack" style="gap:12px"><h2>Pay to this account</h2><dl class="kv">'
       + '<div><dt>UPI ID</dt><dd>' + esc(o.payTo.upi) + copyBtn(o.payTo.upi) + '</dd></div>'
       + '<div><dt>Account holder</dt><dd>' + esc(o.payTo.holderName) + '</dd></div>'
-      + '<div><dt>Amount</dt><dd class="num">' + fmtInr(o.inr) + copyBtn(String(o.inr)) + '</dd></div></dl></section>';
+      + '<div><dt>Amount</dt><dd class="num">' + fmtInr(o.inr || o.usdt) + copyBtn(String(o.inr || o.usdt)) + '</dd></div></dl></section>';
   }
   if (role === 'buyer' && o.status === 'awaiting_payment') {
     h += '<form class="card stack" id="paid-form" novalidate><h2>After you have paid</h2>'
@@ -399,15 +553,15 @@ function orderView() {
       + '<button class="btn ghost" data-a="cancel" data-id="' + o.id + '">Cancel order</button>';
   }
   if (role === 'buyer' && o.status === 'paid') {
-    h += '<section class="note info"><span>' + ic('info', 20) + '</span><span>Waiting for ' + esc(o.merchant.name) + ' to confirm. Your USDT is released as soon as the money shows in their account.</span></section>'
+    h += '<section class="note info"><span>' + ic('info', 20) + '</span><span>Waiting for ' + esc(o.merchant.name) + ' to confirm. Your INR is released as soon as the money shows in their account.</span></section>'
       + '<button class="btn danger" data-a="new-dispute" data-id="' + o.id + '">' + ic('dispute', 18) + ' Problem with this order</button>';
   }
   if (role === 'merchant' && o.status === 'paid') {
-    h += '<section class="card stack"><h2>Release USDT</h2>'
-      + '<p class="small" style="margin:0">Open your bank app and look for <b class="num">' + fmtInr(o.inr) + '</b> from <b>' + esc(o.expectedPayerName || o.buyer.name) + '</b>'
+    h += '<section class="card stack"><h2>Release INR</h2>'
+      + '<p class="small" style="margin:0">Open your bank app and look for <b class="num">' + fmtInr(o.inr || o.usdt) + '</b> from <b>' + esc(o.expectedPayerName || o.buyer.name) + '</b>'
       + (o.utr ? ' (reference <span class="num">' + esc(o.utr) + '</span>)' : '') + '.</p>'
       + '<label class="check"><input type="checkbox" id="ack"><span>I checked my own bank statement. The full amount arrived from an account in the buyer’s name.</span></label>'
-      + '<div class="btns"><button class="btn primary" id="rel" data-a="release" data-id="' + o.id + '" disabled>' + ic('lock', 18) + ' Confirm and release ' + fmtU(o.usdt) + ' USDT</button>'
+      + '<div class="btns"><button class="btn primary" id="rel" data-a="release" data-id="' + o.id + '" disabled>' + ic('lock', 18) + ' Confirm and release ' + fmtInr(o.inr || o.usdt) + '</button>'
       + '<button class="btn danger" data-a="new-dispute" data-id="' + o.id + '">' + ic('dispute', 18) + ' Money has not arrived, open dispute</button></div></section>';
   }
   if (role === 'merchant' && o.status === 'awaiting_payment') {
@@ -430,7 +584,7 @@ function msgHTML(m) {
 }
 function chatView() {
   var list = D.msgs[V.sub.id] || [];
-  return '<div class="chat-wrap"><div class="note info" style="margin-top:4px"><span>' + ic('shield', 20) + '</span><span>Keep the conversation here. Never share a UPI PIN, OTP or card details, and never release USDT for a payment you have not seen in your own account.</span></div>'
+  return '<div class="chat-wrap"><div class="note info" style="margin-top:4px"><span>' + ic('shield', 20) + '</span><span>Keep the conversation here. Never share a UPI PIN, OTP or card details, and never release INR for a payment you have not seen in your own account.</span></div>'
     + '<div class="msgs" id="msgs">' + (list.map(msgHTML).join('') || '<p class="empty">No messages yet.</p>') + '</div>'
     + '<form class="composer" id="chat-form" autocomplete="off"><input class="input" id="msg" aria-label="Message" placeholder="Write a message" maxlength="500"><button class="send" type="submit" aria-label="Send">' + ic('send', 20) + '</button></form></div>';
 }
@@ -451,19 +605,19 @@ function fileList(d) {
 }
 function disputeView() {
   var d = D.dispute, o = D.order, res = d.status === 'resolved', admin = S.me.role === 'admin';
-  var L = ['Dispute opened', 'Under review by support', res ? 'Resolved: ' + (d.resolution.outcome === 'release_to_buyer' ? 'USDT released to the buyer' : 'USDT returned to the merchant') : 'Decision'];
+  var L = ['Dispute opened', 'Under review by support', res ? 'Resolved: ' + (d.resolution.outcome === 'release_to_buyer' ? 'INR released to the buyer' : 'INR returned to the merchant') : 'Decision'];
   var st = res ? ['done', 'done', 'done'] : ['done', 'now', 'todo'];
   var h = '<div class="stack">';
   h += '<section class="card"><dl class="kv"><div><dt>Order</dt><dd class="num">#' + esc(o.ref) + '</dd></div>'
     + '<div><dt>Merchant</dt><dd>' + esc(o.merchant.name) + '</dd></div><div><dt>Buyer</dt><dd>' + esc(o.buyer.name) + '</dd></div>'
-    + '<div><dt>Amount held</dt><dd class="num">' + fmtU(o.usdt) + ' USDT</dd></div><div><dt>Rupees</dt><dd class="num">' + fmtInr(o.inr) + '</dd></div>'
+    + '<div><dt>Amount held</dt><dd class="num">' + fmtInr(o.inr || o.usdt) + '</dd></div>'
     + (o.utr ? '<div><dt>Bank reference</dt><dd class="num">' + esc(o.utr) + '</dd></div>' : '')
     + '<div><dt>Opened</dt><dd>' + ago(d.createdAt) + '</dd></div><div><dt>Reason</dt><dd>' + esc(RS[d.reason] || d.reason) + '</dd></div></dl></section>';
   h += '<section class="card stack" style="gap:8px"><h2>What happened</h2><p style="margin:0;overflow-wrap:anywhere">' + esc(d.details) + '</p>' + fileList(d) + '</section>';
   h += '<section class="card stack" style="gap:12px"><h2>Status</h2><ol class="tl">' + L.map(function (t, i) {
     return '<li class="' + st[i] + '"><span class="nd">' + (st[i] === 'done' ? ic('check', 14) : '') + '</span><b>' + esc(t) + '</b></li>';
   }).join('') + '</ol>' + (res && d.resolution.note ? '<p class="small muted" style="margin:0">Support note: ' + esc(d.resolution.note) + '</p>' : '')
-    + (!res && !admin ? '<p class="muted small" style="margin:0">Support replies within 24 hours. The USDT stays in escrow until then.</p>' : '') + '</section>';
+    + (!res && !admin ? '<p class="muted small" style="margin:0">Support replies within 24 hours. The INR stays in escrow until then.</p>' : '') + '</section>';
   if (admin) {
     var msgs = D.msgs[o.id] || [];
     h += '<section class="card stack" style="gap:8px"><h2>Chat between the two sides</h2><div class="transcript">'
@@ -474,7 +628,7 @@ function disputeView() {
     if (!res) {
       h += '<form class="card stack" id="resolve-form" novalidate><h2>Decision</h2>'
         + '<p class="muted small" style="margin:0">Release to the buyer only if the merchant’s statement shows the money, or the merchant cannot show it did not arrive.</p>'
-        + '<div class="field"><label for="res-outcome">Outcome</label><select class="input" id="res-outcome"><option value="release_to_buyer">Release USDT to the buyer</option><option value="return_to_merchant">Return USDT to the merchant</option></select></div>'
+        + '<div class="field"><label for="res-outcome">Outcome</label><select class="input" id="res-outcome"><option value="release_to_buyer">Release INR to the buyer</option><option value="return_to_merchant">Return INR to the merchant</option></select></div>'
         + '<div class="field"><label for="res-note">Note for both sides</label><textarea class="input" id="res-note" maxlength="1000" placeholder="Why you decided this"></textarea></div>'
         + '<button class="btn primary" type="submit">Resolve dispute</button></form>';
     }
@@ -487,7 +641,7 @@ function disputeView() {
 function newDisputeView() {
   var o = D.order;
   return '<form class="stack" id="dispute-form" novalidate><section class="card"><dl class="kv"><div><dt>Order</dt><dd class="num">#' + esc(o.ref) + '</dd></div>'
-    + '<div><dt>Amount held</dt><dd class="num">' + fmtU(o.usdt) + ' USDT</dd></div></dl></section>'
+    + '<div><dt>Amount held</dt><dd class="num">' + fmtInr(o.inr || o.usdt) + '</dd></div></dl></section>'
     + '<div class="field"><label for="d-reason">What went wrong?</label><select class="input" id="d-reason">'
     + Object.keys(RS).map(function (k) { return '<option value="' + k + '">' + RS[k] + '</option>'; }).join('') + '</select></div>'
     + '<div class="field"><label for="d-details">Describe what happened</label><textarea class="input" id="d-details" maxlength="2000" placeholder="Include the time you checked your account and what you saw."></textarea></div>'
@@ -538,6 +692,18 @@ function accountView() {
   h += '<section class="card"><h2 style="margin-bottom:12px">Limits</h2><dl class="kv"><div><dt>Per order</dt><dd class="num">' + fmtInr(l.minInr) + ' to ' + fmtInr(l.maxInr) + '</dd></div>'
     + (l.dailyInr ? '<div><dt>Per merchant per day</dt><dd class="num">' + fmtInr(l.dailyInr) + '</dd></div>' : '')
     + '<div><dt>Payment window</dt><dd class="num">' + S.cfg.paymentWindowMinutes + ' min</dd></div></dl></section>';
+  h += '<section class="card stack" style="gap:10px">'
+    + '<div class="sec-head"><h2>Financial Activity</h2></div>'
+    + '<p class="muted small" style="margin:0">Track your complete transition history: wallet credits, escrow locks, releases, refunds, and order movements.</p>'
+    + '<button class="btn ghost" data-a="open-transactions">' + ic('history', 18) + '<span>View Transaction History</span></button>'
+    + '</section>';
+  h += '<section class="card stack" style="gap:10px">'
+    + '<div class="sec-head"><h2>Need help?</h2></div>'
+    + '<p class="muted small" style="margin:0">Have questions about an escrow order, your KYC, or account? Chat directly with our support team.</p>'
+    + '<button class="btn gold" data-a="open-support">' + ic('support', 18) + '<span>Live Support Chat</span>'
+    + (D.support.unreadCount ? '<span class="badge" style="position:static;margin-left:6px">' + D.support.unreadCount + '</span>' : '')
+    + '</button></section>';
+  h += themeSection();
   h += '<section class="card stack" style="gap:12px">'
     + '<div class="sec-head"><h2>Profile session</h2><span class="muted small">' + esc(me.email) + '</span></div>'
     + '<p class="muted small" style="margin:0">Signed in as <b>' + esc(me.name) + '</b> (' + (me.role === 'merchant' ? 'Merchant' : me.role === 'buyer' ? 'Buyer' : 'Support') + '). Tap below to securely log out.</p>'
@@ -552,15 +718,53 @@ function replaceView() {
 
 /* ---------- views: support (admin) ---------- */
 function adminKyc() {
-  var l = D.admin.kyc;
-  if (!l.length) return '<div class="card empty">No identity checks waiting.</div>';
-  return '<div class="stack">' + l.map(function (u) {
-    return '<section class="card stack" style="gap:10px"><div class="sec-head"><h2>' + esc(u.name) + '</h2>' + pill('info', u.role) + '</div>'
-      + '<dl class="kv"><div><dt>Email</dt><dd>' + esc(u.email) + '</dd></div><div><dt>Legal name</dt><dd>' + esc(u.kyc.legalName) + '</dd></div>'
-      + '<div><dt>PAN ends</dt><dd class="num">' + esc(u.panLast4) + '</dd></div><div><dt>Submitted</dt><dd>' + ago(u.submittedAt) + '</dd></div></dl>'
-      + '<div class="field"><label for="r-' + u.id + '">Reason (needed to reject)</label><input class="input" id="r-' + u.id + '" maxlength="300"></div>'
-      + '<div class="btns row2"><button class="btn primary" data-a="kyc-approve" data-id="' + u.id + '">Approve</button><button class="btn danger" data-a="kyc-reject" data-id="' + u.id + '">Reject</button></div></section>';
-  }).join('') + '</div>';
+  var filter = D.admin.kycFilter || 'pending';
+  var counts = D.admin.kycCounts || { pending: 0, history: 0 };
+  var chips = [
+    ['pending', 'Pending Review' + (counts.pending ? ' (' + counts.pending + ')' : '')],
+    ['history', 'Approval History' + (counts.history ? ' (' + counts.history + ')' : '')],
+    ['verified', 'Approved'],
+    ['rejected', 'Rejected']
+  ].map(function (c) {
+    return '<button class="chip" aria-pressed="' + (filter === c[0]) + '" data-a="admin-kyc-filter" data-f="' + c[0] + '">' + c[1] + '</button>';
+  }).join('');
+
+  var l = D.admin.kyc || [];
+  var h = '<div class="stack"><div class="chips" role="group" aria-label="Filter identity checks">' + chips + '</div>';
+
+  if (!l.length) {
+    var emptyMsg = filter === 'pending' ? 'No identity checks waiting for review.' : 'No identity records in this history view.';
+    return h + '<div class="card empty">' + emptyMsg + '</div></div>';
+  }
+
+  if (filter === 'pending') {
+    h += l.map(function (u) {
+      return '<section class="card stack" style="gap:10px"><div class="sec-head"><h2>' + esc(u.name) + '</h2>' + pill('info', u.role === 'merchant' ? 'Merchant' : 'Buyer') + '</div>'
+        + '<dl class="kv"><div><dt>Email</dt><dd>' + esc(u.email) + '</dd></div><div><dt>Legal name</dt><dd>' + esc(u.kyc && u.kyc.legalName) + '</dd></div>'
+        + '<div><dt>PAN ends</dt><dd class="num">' + esc(u.kyc && u.kyc.panLast4 ? u.kyc.panLast4 : '—') + '</dd></div><div><dt>Submitted</dt><dd>' + ago(u.submittedAt) + '</dd></div></dl>'
+        + '<div class="field"><label for="r-' + u.id + '">Reason (needed to reject)</label><input class="input" id="r-' + u.id + '" maxlength="300" placeholder="e.g. Name mismatch with PAN document"></div>'
+        + '<div class="btns row2"><button class="btn primary" data-a="kyc-approve" data-id="' + u.id + '">Approve</button><button class="btn danger" data-a="kyc-reject" data-id="' + u.id + '">Reject</button></div></section>';
+    }).join('');
+  } else {
+    h += '<div class="list">' + l.map(function (u) {
+      var isVerified = u.kyc && u.kyc.status === 'verified';
+      var reviewer = u.kyc && u.kyc.reviewedBy ? (u.kyc.reviewedBy.name || u.kyc.reviewedBy.email) : 'Admin';
+      return '<section class="card stack" style="gap:10px">'
+        + '<div class="sec-head"><div style="display:flex;align-items:center;gap:10px"><span class="av">' + initials(u.name) + '</span><div><b style="font-size:15px">' + esc(u.name) + '</b><div class="muted small">' + esc(u.email) + ' · ' + (u.role === 'merchant' ? 'Merchant' : 'Buyer') + '</div></div></div>'
+        + (isVerified ? pill('good', 'Verified', true) : pill('bad', 'Rejected', true)) + '</div>'
+        + '<dl class="kv">'
+        + '<div><dt>Legal name</dt><dd><b>' + esc((u.kyc && u.kyc.legalName) || '—') + '</b></dd></div>'
+        + '<div><dt>PAN ending</dt><dd class="num">' + esc((u.kyc && u.kyc.panLast4) ? u.kyc.panLast4 : '—') + '</dd></div>'
+        + '<div><dt>Submitted</dt><dd>' + (u.submittedAt ? ago(u.submittedAt) + ' (' + new Date(u.submittedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) + ')' : '—') + '</dd></div>'
+        + '<div><dt>Reviewed</dt><dd>' + (u.reviewedAt ? ago(u.reviewedAt) + ' (' + new Date(u.reviewedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) + ')' : '—') + '</dd></div>'
+        + '<div><dt>Reviewed by</dt><dd>' + esc(reviewer) + '</dd></div>'
+        + '</dl>'
+        + (!isVerified && u.kyc && u.kyc.rejectReason ? '<div class="note bad" style="margin-top:2px"><span>' + ic('x', 18) + '</span><span><b>Rejection Reason:</b> ' + esc(u.kyc.rejectReason) + '</span></div>' : '')
+        + '</section>';
+    }).join('') + '</div>';
+  }
+
+  return h + '</div>';
 }
 function adminAccounts() {
   var l = D.admin.accounts;
@@ -589,23 +793,131 @@ function adminUsers() {
     var kc = KYC[u.kyc.status];
     return '<section class="card stack" style="gap:10px"><div class="sec-head"><h2>' + esc(u.name) + '</h2>' + pill(kc[0], kc[1]) + '</div>'
       + '<dl class="kv"><div><dt>' + esc(u.role === 'merchant' ? 'Merchant' : 'Buyer') + '</dt><dd>' + esc(u.email) + '</dd></div>'
-      + '<div><dt>Available</dt><dd class="num">' + fmtU(u.balance.available) + ' USDT</dd></div><div><dt>In escrow</dt><dd class="num">' + fmtU(u.balance.escrow) + ' USDT</dd></div></dl>'
-      + '<div class="field"><label for="c-' + u.id + '">Add USDT</label><input class="input" id="c-' + u.id + '" inputmode="decimal" placeholder="For example 100" autocomplete="off"></div>'
-      + '<button class="btn ghost" data-a="credit" data-id="' + u.id + '">Add to balance</button></section>';
+      + '<div><dt>Available</dt><dd class="num">' + fmtInr(u.balance.available) + '</dd></div><div><dt>In escrow</dt><dd class="num">' + fmtInr(u.balance.escrow) + '</dd></div>'
+      + (u.blocked ? '<div><dt>Status</dt><dd>' + pill('bad', 'Blocked') + '</dd></div>' : '') + '</dl>'
+      + '<div class="field"><label for="c-' + u.id + '">Add INR</label><input class="input" id="c-' + u.id + '" inputmode="decimal" placeholder="For example 1000" autocomplete="off"></div>'
+      + '<div class="btns row2"><button class="btn ghost" data-a="credit" data-id="' + u.id + '">Add to balance</button>'
+      + (u.blocked
+        ? '<button class="btn primary" data-a="unblock-user" data-id="' + u.id + '">Unblock</button>'
+        : '<button class="btn danger" data-a="block-user" data-id="' + u.id + '">Block</button>') + '</div></section>';
   }).join('')
+  + themeSection()
   + '<section class="card stack" style="gap:12px">'
   + '<div class="sec-head"><h2>Support session</h2><span class="muted small">' + esc(S.me.email) + '</span></div>'
   + '<button class="btn danger" data-a="logout">' + ic('logout', 18) + '<span>Log out</span></button>'
   + '</section></div>';
 }
 
+/* ---------- views: admin orders ---------- */
+function adminOrders() {
+  var f = V.filter;
+  var m = {
+    all: function () { return true; },
+    open: function (o) { return o.status === 'awaiting_payment' || o.status === 'paid'; },
+    closed: function (o) { return o.status === 'completed' || o.status === 'cancelled'; },
+    disputed: function (o) { return o.status === 'disputed'; }
+  };
+  var list = (D.admin.orders || []).filter(m[f] || m.all);
+  var chips = [['all', 'All'], ['open', 'Open'], ['closed', 'Closed'], ['disputed', 'Disputed']].map(function (c) {
+    return '<button class="chip" aria-pressed="' + (f === c[0]) + '" data-a="filter" data-f="' + c[0] + '">' + c[1] + '</button>';
+  }).join('');
+  return '<div class="stack"><div class="chips" role="group" aria-label="Filter orders">' + chips + '</div>'
+    + (list.length ? '<div class="list">' + list.map(function (o) {
+      var st = ST[o.status];
+      return '<button class="row" data-a="open-order" data-id="' + o.id + '"><span class="av">' + initials(o.buyer.name) + '</span>'
+        + '<span class="mid"><b>' + esc(o.buyer.name) + ' → ' + esc(o.merchant.name) + '</b><span>#' + esc(o.ref) + ' · ' + ago(o.createdAt) + '</span></span>'
+        + '<span class="end"><b class="num">' + fmtInr(o.inr) + '</b>' + pill(st.c, st.l) + '</span></button>';
+    }).join('') + '</div>' : '<div class="card empty">No orders in this view.</div>') + '</div>';
+}
+
+/* ---------- views: customer transactions & transition history ---------- */
+function transactionsView() {
+  var list = D.transactions || [];
+  var sum = D.transactionsSummary || {
+    available: (S.me && S.me.balance && S.me.balance.available) || 0,
+    escrow: (S.me && S.me.balance && S.me.balance.escrow) || 0,
+    totalIn: 0,
+    totalOut: 0
+  };
+  var f = D.transactionsFilter || 'all';
+
+  var chips = [
+    ['all', 'All Transitions'],
+    ['in', 'Credits (+ ' + fmtInr(sum.totalIn) + ')'],
+    ['out', 'Debits (- ' + fmtInr(sum.totalOut) + ')'],
+    ['escrow', 'Escrow Movements']
+  ].map(function (c) {
+    return '<button class="chip" aria-pressed="' + (f === c[0]) + '" data-a="tx-filter" data-f="' + c[0] + '">' + c[1] + '</button>';
+  }).join('');
+
+  var filtered = list.filter(function (t) {
+    if (f === 'in') return t.direction === 'in';
+    if (f === 'out') return t.direction === 'out';
+    if (f === 'escrow') return (t.type && t.type.indexOf('escrow') !== -1);
+    return true;
+  });
+
+  var h = '<div class="stack">'
+    + '<section class="hero">'
+    + '<div class="lbl">Balance & Escrow Ledger</div>'
+    + '<div class="big num">' + fmtInr(sum.available) + '</div>'
+    + '<div class="hero-grid">'
+    + '<div><b>' + fmtInr(sum.available) + '</b><span>Available</span></div>'
+    + '<div><b>' + fmtInr(sum.escrow) + '</b><span>In Escrow</span></div>'
+    + '</div>'
+    + '<div style="display:flex;justify-content:space-between;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.15);font-size:12.5px">'
+    + '<span>Total In: <b style="color:#6ee7b7">+' + fmtInr(sum.totalIn) + '</b></span>'
+    + '<span>Total Out: <b style="color:#fca5a5">-' + fmtInr(sum.totalOut) + '</b></span>'
+    + '</div>'
+    + '</section>'
+    + '<div class="chips" role="group" aria-label="Filter transactions">' + chips + '</div>';
+
+  if (!filtered.length) {
+    h += '<div class="card empty"><span class="av" style="margin:0 auto 10px;background:var(--mute-bg);color:var(--muted)">' + ic('history', 24) + '</span><b>No transactions in this view</b><p class="muted small" style="margin:4px 0 0">Balance movements, escrow reservations, releases, and refunds will be recorded here automatically.</p></div>';
+  } else {
+    h += '<div class="list">' + filtered.map(function (t) {
+      var isIn = t.direction === 'in';
+      var isEscrow = t.type && t.type.indexOf('escrow') !== -1;
+      var icon = isIn ? ic('arrowDownLeft', 20) : ic('arrowUpRight', 20);
+      var sign = isIn ? '+' : '-';
+      var amtColor = isIn ? 'var(--good)' : 'var(--fg)';
+      var badge = isIn ? pill('good', 'Credit') : (isEscrow ? pill('warn', 'Escrow') : pill('mute', 'Debit'));
+
+      var orderBtn = t.orderId
+        ? '<div style="margin-top:6px"><button class="link" data-a="open-order" data-id="' + t.orderId + '" style="font-size:12.5px;display:inline-flex;align-items:center;gap:4px">View Order #' + esc(t.orderRef) + ' &rarr;</button></div>'
+        : '';
+
+      return '<div class="card" style="padding:14px 16px;display:flex;gap:12px;align-items:flex-start">'
+        + '<span class="av ' + (isIn ? 'good' : 'mute') + '" style="flex:none;margin-top:2px">' + icon + '</span>'
+        + '<div style="flex:1;min-width:0">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">'
+        + '<b style="font-size:14.5px">' + esc(t.title) + '</b>'
+        + '<span class="num" style="font-size:15px;font-weight:700;color:' + amtColor + '">' + sign + ' ' + fmtInr(t.amount) + '</span>'
+        + '</div>'
+        + '<div class="muted small" style="display:flex;align-items:center;gap:6px;margin-top:3px">'
+        + '<span>' + ago(t.createdAt) + ' · ' + clock(t.createdAt) + '</span>'
+        + (t.counterparty ? '<span>· ' + esc(t.counterparty) + '</span>' : '')
+        + '</div>'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--line);font-size:12px">'
+        + '<span class="muted">Balance after: <b class="num" style="color:var(--fg)">' + fmtInr(t.availableAfter) + '</b>' + (t.escrowAfter ? ' (Escrow: ' + fmtInr(t.escrowAfter) + ')' : '') + '</span>'
+        + badge
+        + '</div>'
+        + orderBtn
+        + '</div>'
+        + '</div>';
+    }).join('') + '</div>';
+  }
+
+  return h + '</div>';
+}
+
 /* ---------- shell ---------- */
 function tabsFor(role) {
-  if (role === 'admin') return [['kyc', 'Identity', 'shield'], ['accounts', 'Accounts', 'lock'], ['disputes', 'Disputes', 'dispute'], ['users', 'Users', 'user']];
-  return [['home', role === 'buyer' ? 'Buy' : 'Home', 'home'], ['orders', 'Orders', 'orders'], ['chats', 'Chats', 'chat'], ['disputes', 'Disputes', 'dispute'], ['account', 'Profile', 'user']];
+  if (role === 'admin') return [['support', 'Support', 'inbox'], ['kyc', 'Identity', 'shield'], ['accounts', 'Accounts', 'lock'], ['disputes', 'Disputes', 'dispute'], ['orders', 'Orders', 'orders'], ['users', 'Settings', 'settings']];
+  return [['home', role === 'buyer' ? 'Send' : 'Home', 'home'], ['orders', 'Orders', 'orders'], ['chats', 'Chats', 'chat'], ['disputes', 'Disputes', 'dispute'], ['account', 'Settings', 'settings']];
 }
 function tabTitle() {
-  var t = { home: S.me.role === 'buyer' ? 'Buy USDT' : 'Merchant Desk', orders: 'Orders', chats: 'Chats', disputes: 'Disputes', account: 'Profile', kyc: 'Identity checks', accounts: 'Payment accounts', users: 'Users' };
+  var t = { home: S.me.role === 'buyer' ? 'Send INR' : 'INR Merchant Desk', orders: 'Orders', chats: 'Chats', disputes: 'Disputes', account: 'Settings', support: 'Support Inbox', kyc: 'Identity checks', accounts: 'Payment accounts', orders: S.me.role === 'admin' ? 'All Orders' : 'Orders', users: 'Settings & Users' };
   return t[V.tab] || '';
 }
 function subTitle() {
@@ -614,6 +926,9 @@ function subTitle() {
   if (s.k === 'chat') return D.order ? (S.me.role === 'merchant' ? D.order.buyer.name : D.order.merchant.name) : 'Chat';
   if (s.k === 'dispute') return D.dispute ? 'Dispute ' + D.dispute.ref : 'Dispute';
   if (s.k === 'new-dispute') return 'Open a dispute';
+  if (s.k === 'support') return 'Customer Support';
+  if (s.k === 'admin-support') return D.support.adminActive ? D.support.adminActive.customer.name : 'Support Chat';
+  if (s.k === 'transactions') return 'Transaction History';
   return 'Replace account';
 }
 function statusPill() {
@@ -629,8 +944,10 @@ function header() {
     h = '<button class="back" data-a="back" aria-label="Back">' + ic('back', 20) + '</button><h1>' + esc(subTitle()) + '</h1>';
     if (V.sub.k === 'chat' && D.order) { var st = ST[D.order.status]; h += pill(st.c, st.l); }
   } else {
-    h = (V.tab === 'home' ? '<span class="logo" aria-hidden="true">₮</span>' : '') + '<h1>' + esc(tabTitle()) + '</h1>'
+    h = (V.tab === 'home' ? '<span class="logo" aria-hidden="true">₹</span>' : '') + '<h1>' + esc(tabTitle()) + '</h1>'
       + '<div style="display:flex;align-items:center;gap:8px">' + statusPill()
+      + (S.me.role !== 'admin' ? '<button class="back" data-a="open-support" aria-label="Support" title="Customer Support" style="position:relative;width:34px;height:34px;color:var(--muted)">' + ic('support', 18) + (D.support.unreadCount ? '<span class="badge" style="top:-3px;right:-3px;min-width:15px;height:15px;font-size:9.5px;line-height:15px;padding:0 3px">' + D.support.unreadCount + '</span>' : '') + '</button>' : '')
+      + '<button class="back" data-a="toggle-theme" aria-label="Toggle theme" title="Toggle theme" style="width:34px;height:34px;color:var(--muted)">' + ic(isDarkMode() ? 'sun' : 'moon', 18) + '</button>'
       + '<button class="back" data-a="logout" aria-label="Log out" title="Log out" style="width:34px;height:34px;color:var(--muted)">' + ic('logout', 18) + '</button></div>';
   }
   $('#top').innerHTML = h;
@@ -642,8 +959,10 @@ function nav() {
     badges.orders = D.orders.filter(function (o) { return role === 'merchant' ? o.status === 'paid' : o.status === 'awaiting_payment'; }).length;
     badges.chats = Object.keys(D.unread).length;
     badges.disputes = D.orders.filter(function (o) { return o.status === 'disputed'; }).length;
+  } else {
+    badges.support = D.support.totalUnread || 0;
   }
-  $('#nav').className = 'nav' + (admin ? ' n4' : '');
+  $('#nav').className = 'nav' + (admin ? ' n6' : '');
   $('#nav').innerHTML = tabs.map(function (t, i) {
     var mid = !admin && i === 2, n = badges[t[0]];
     return '<button' + (mid ? ' class="mid"' : '') + ' data-a="tab" data-t="' + t[0] + '" aria-label="' + t[1] + '"' + (V.tab === t[0] ? ' aria-current="page"' : '') + '>'
@@ -657,15 +976,19 @@ function body() {
     if (s.k === 'chat') return chatView();
     if (s.k === 'dispute') return disputeView();
     if (s.k === 'new-dispute') return newDisputeView();
+    if (s.k === 'support') return customerSupportView();
+    if (s.k === 'admin-support') return adminSupportThreadView();
+    if (s.k === 'transactions') return transactionsView();
     return replaceView();
   }
   var role = S.me.role;
   switch (V.tab) {
     case 'home': return role === 'merchant' ? merchantHome() : buyerHome();
-    case 'orders': return ordersView();
+    case 'orders': return role === 'admin' ? adminOrders() : ordersView();
     case 'chats': return chatsView();
     case 'disputes': return role === 'admin' ? adminDisputes() : disputesView();
     case 'account': return accountView();
+    case 'support': return adminSupportView();
     case 'kyc': return adminKyc();
     case 'accounts': return adminAccounts();
     case 'users': return adminUsers();
@@ -678,9 +1001,8 @@ function render(reset) {
   if (!S.me) { v.innerHTML = authView(); v.scrollTop = 0; return; }
   header(); v.innerHTML = body(); nav();
   v.scrollTop = reset ? 0 : keep;
-  if (V.sub && V.sub.k === 'chat') v.scrollTop = v.scrollHeight;
+  if (V.sub && (V.sub.k === 'chat' || V.sub.k === 'support' || V.sub.k === 'admin-support')) v.scrollTop = v.scrollHeight;
 }
-/* Redraw after live updates without wiping anything the person is typing. */
 function typing() {
   var fields = document.querySelectorAll('#view input:not([type=checkbox]):not([type=file]), #view textarea');
   for (var i = 0; i < fields.length; i++) if (fields[i].value) return true;
@@ -690,10 +1012,131 @@ function softRender() {
   if (!S.me) return;
   header(); nav();
   var s = V.sub;
-  if (typing() || (s && (s.k === 'new-dispute' || s.k === 'replace' || s.k === 'chat'))) return;
+  if (typing() || (s && (s.k === 'new-dispute' || s.k === 'replace' || s.k === 'chat' || s.k === 'support' || s.k === 'admin-support'))) return;
   var ack = document.getElementById('ack'), wasChecked = ack && ack.checked;
   $('#view').innerHTML = body();
   if (wasChecked && document.getElementById('ack')) { document.getElementById('ack').checked = true; document.getElementById('rel').disabled = false; }
+}
+
+/* ---------- Customer Support & Admin WhatsApp-style Inbox Views ---------- */
+function customerSupportView() {
+  var list = D.support.msgs || [];
+  return '<div class="chat-wrap">'
+    + '<div class="support-bar">'
+    + '<div style="display:flex;align-items:center;gap:10px"><span class="av" style="background:var(--brand);color:var(--brand-ink)">' + ic('shield', 18) + '</span>'
+    + '<div><b style="font-size:14.5px">Support Team</b><div class="muted small">Direct 1-to-1 live assistance</div></div></div>'
+    + '<span class="pill good"><i></i>Online</span></div>'
+    + '<div class="msgs" id="support-msgs">'
+    + (list.length ? list.map(function (m) {
+        var isMe = m.senderRole === 'customer';
+        return '<div class="bub ' + (isMe ? 'me' : 'them') + '">'
+          + (!isMe ? '<b style="display:block;font-size:11px;opacity:.8;margin-bottom:2px">Support</b>' : '')
+          + esc(m.text)
+          + '<small>' + clock(m.createdAt) + '</small></div>';
+      }).join('') : '<div class="support-welcome"><span class="av" style="width:48px;height:48px;background:var(--mute-bg);color:var(--brand)">' + ic('support', 24) + '</span>'
+        + '<b>Hi ' + esc(S.me.name) + '!</b>'
+        + '<p>How can our support team help you today? Send a message and an agent will reply here in real time.</p></div>')
+    + '</div>'
+    + '<form class="composer" id="customer-support-form" autocomplete="off">'
+    + '<input class="input" id="support-msg" aria-label="Type your message" placeholder="Type a message to support..." maxlength="1000">'
+    + '<button class="send" type="submit" aria-label="Send">' + ic('send', 20) + '</button>'
+    + '</form></div>';
+}
+
+function adminSupportView() {
+  var list = D.support.adminInbox || [];
+  var filter = D.support.filter || 'all';
+  var search = (D.support.search || '').toLowerCase().trim();
+
+  var chips = [['all', 'All'], ['unread', 'Unread'], ['open', 'Open'], ['resolved', 'Resolved']].map(function (c) {
+    return '<button class="chip" aria-pressed="' + (filter === c[0]) + '" data-a="support-filter" data-f="' + c[0] + '">' + c[1] + '</button>';
+  }).join('');
+
+  var filtered = list.filter(function (c) {
+    if (filter === 'unread' && !(c.unreadAdminCount > 0)) return false;
+    if (filter === 'open' && c.status !== 'open') return false;
+    if (filter === 'resolved' && c.status !== 'resolved') return false;
+    if (search) {
+      var n = (c.customer && c.customer.name || '').toLowerCase();
+      var e = (c.customer && c.customer.email || '').toLowerCase();
+      if (!n.includes(search) && !e.includes(search)) return false;
+    }
+    return true;
+  });
+
+  return '<div class="inbox-wrap">'
+    + '<div class="inbox-search">' + ic('search', 16) + '<input id="inbox-search-input" placeholder="Search customer name or email..." value="' + esc(D.support.search) + '"></div>'
+    + '<div class="chips" role="group" aria-label="Filter inbox">' + chips + '</div>'
+    + (filtered.length ? '<div class="list">' + filtered.map(function (c) {
+        var unread = c.unreadAdminCount > 0;
+        return '<button class="inbox-row' + (unread ? ' unread' : '') + '" data-a="open-admin-support" data-id="' + c.id + '">'
+          + '<span class="av">' + initials(c.customer.name) + '</span>'
+          + '<span class="mid">'
+          + '<span class="inbox-top-line"><b>' + esc(c.customer.name) + '</b><span class="muted small">' + ago(c.lastMessageAt) + '</span></span>'
+          + '<span class="inbox-snippet">' + esc(c.lastMessageText || 'Conversation started') + '</span>'
+          + '</span>'
+          + '<span class="end">'
+          + (unread ? '<span class="inbox-badge">' + c.unreadAdminCount + '</span>' : '')
+          + (c.status === 'resolved' ? pill('mute', 'Resolved') : '')
+          + '</span></button>';
+      }).join('') + '</div>' : '<div class="card empty">No customer conversations found.</div>')
+    + '</div>';
+}
+
+function adminSupportThreadView() {
+  var c = D.support.adminActive;
+  if (!c) return '<div class="card empty">No conversation selected.</div>';
+  var list = D.support.adminMsgs || [];
+  return '<div class="chat-wrap">'
+    + '<div class="support-bar">'
+    + '<div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">'
+    + '<span class="av">' + initials(c.customer.name) + '</span>'
+    + '<div style="min-width:0;flex:1"><b style="font-size:14px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(c.customer.name) + '</b>'
+    + '<div class="muted small" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(c.customer.email) + ' · ' + (c.customer.role === 'merchant' ? 'Merchant' : 'Buyer') + '</div></div>'
+    + '</div>'
+    + '<button class="btn ghost sm" data-a="toggle-conv-status" data-id="' + c.id + '">' + (c.status === 'resolved' ? 'Reopen' : 'Resolve') + '</button>'
+    + '</div>'
+    + '<div class="msgs" id="admin-support-msgs">'
+    + (list.length ? list.map(function (m) {
+        var isCust = m.senderRole === 'customer';
+        return '<div class="bub ' + (isCust ? 'them' : 'me') + '">'
+          + (isCust ? '<b style="display:block;font-size:11px;opacity:.8;margin-bottom:2px">' + esc(c.customer.name) + '</b>' : '')
+          + esc(m.text)
+          + '<small>' + clock(m.createdAt) + '</small></div>';
+      }).join('') : '<p class="empty">No messages in this conversation yet.</p>')
+    + '</div>'
+    + '<form class="composer" id="admin-support-reply-form" autocomplete="off">'
+    + '<input class="input" id="admin-reply-msg" aria-label="Reply to customer" placeholder="Type reply as Support..." maxlength="1000">'
+    + '<button class="send" type="submit" aria-label="Send">' + ic('send', 20) + '</button>'
+    + '</form></div>';
+}
+
+function renderSupportMsgs() {
+  var v = $('#view');
+  var isCust = V.sub && V.sub.k === 'support';
+  var box = isCust ? $('#support-msgs') : $('#admin-support-msgs');
+  if (box) {
+    var list = isCust ? D.support.msgs : D.support.adminMsgs;
+    if (isCust) {
+      box.innerHTML = list.length ? list.map(function (m) {
+        var isMe = m.senderRole === 'customer';
+        return '<div class="bub ' + (isMe ? 'me' : 'them') + '">'
+          + (!isMe ? '<b style="display:block;font-size:11px;opacity:.8;margin-bottom:2px">Support</b>' : '')
+          + esc(m.text)
+          + '<small>' + clock(m.createdAt) + '</small></div>';
+      }).join('') : '<div class="support-welcome"><span class="av" style="width:48px;height:48px;background:var(--mute-bg);color:var(--brand)">' + ic('support', 24) + '</span><b>Hi ' + esc(S.me.name) + '!</b><p>How can our support team help you today? Send a message and an agent will reply here in real time.</p></div>';
+    } else {
+      var c = D.support.adminActive;
+      box.innerHTML = list.length ? list.map(function (m) {
+        var isCust = m.senderRole === 'customer';
+        return '<div class="bub ' + (isCust ? 'them' : 'me') + '">'
+          + (isCust ? '<b style="display:block;font-size:11px;opacity:.8;margin-bottom:2px">' + esc(c.customer.name) + '</b>' : '')
+          + esc(m.text)
+          + '<small>' + clock(m.createdAt) + '</small></div>';
+      }).join('') : '<p class="empty">No messages in this conversation yet.</p>';
+    }
+    if (v) v.scrollTop = v.scrollHeight;
+  }
 }
 
 /* ---------- actions ---------- */
@@ -704,9 +1147,18 @@ function logout() {
   toast('Signed out');
   render(true);
 }
+async function loadCustomerUnread() {
+  if (S.me && S.me.role !== 'admin') {
+    try {
+      var r = await api('GET', '/support/unread-count');
+      D.support.unreadCount = r.unread || 0;
+    } catch (e) {}
+  }
+}
 async function start() {
   connectSocket();
-  await go(S.me.role === 'admin' ? 'kyc' : 'home');
+  await loadCustomerUnread();
+  await go(S.me.role === 'admin' ? 'support' : 'home');
 }
 async function showOrder(id) { V.stack = []; V.sub = null; await open({ k: 'order', id: id }); }
 
@@ -717,11 +1169,37 @@ var A = {
   'auth-mode': function (d) { V.authMode = d.m; render(true); },
   back: function () { return back(); },
   logout: function () { logout(); },
+  'set-theme': function (d) { setTheme(d.th); },
+  'toggle-theme': function () { setTheme(isDarkMode() ? 'light' : 'dark'); },
   'open-order': function (d) { return open({ k: 'order', id: d.id }); },
   'open-chat': function (d) { return open({ k: 'chat', id: d.id }); },
+  'open-support': function () { return open({ k: 'support' }); },
+  'open-admin-support': function (d) { return open({ k: 'admin-support', id: d.id }); },
+  'support-filter': async function (d) {
+    D.support.filter = d.f;
+    await loadAdminSupportInboxQuiet();
+    render();
+  },
+  'toggle-conv-status': async function (d) {
+    var c = D.support.adminActive;
+    var newStatus = c.status === 'resolved' ? 'open' : 'resolved';
+    await api('POST', '/support/admin/conversations/' + d.id + '/status', { status: newStatus });
+    c.status = newStatus;
+    toast(newStatus === 'resolved' ? 'Marked as resolved' : 'Reopened conversation');
+    // refresh inbox list so status badge updates
+    loadAdminSupportInboxQuiet();
+    render();
+  },
   'open-dispute': function (d) { return open({ k: 'dispute', id: d.id }); },
   'new-dispute': function (d) { return open({ k: 'new-dispute', id: d.id }); },
   'replace-account': function () { return open({ k: 'replace' }); },
+  'open-transactions': function () { return open({ k: 'transactions' }); },
+  'tx-filter': function (d) { D.transactionsFilter = d.f; render(); },
+  'admin-kyc-filter': async function (d) {
+    D.admin.kycFilter = d.f;
+    await loadTab('kyc');
+    render();
+  },
 
   'toggle-online': async function () {
     S.me = (await api('POST', '/me/online', { online: !S.me.online })).user;
@@ -730,9 +1208,9 @@ var A = {
   },
   find: async function () {
     var v = ($('#buy-usdt').value || '').trim(), n = Number(v);
-    if (!v || !isFinite(n) || n <= 0) { toast('Enter how many USDT you want'); return; }
-    var inr = n * S.cfg.rate, l = S.cfg.limits;
-    if (inr < l.minInr || inr > l.maxInr) { toast('Orders must be between ' + fmtInr(l.minInr) + ' and ' + fmtInr(l.maxInr)); return; }
+    if (!v || !isFinite(n) || n <= 0) { toast('Enter how much INR you want to send'); return; }
+    var l = S.cfg.limits;
+    if (n < l.minInr || n > l.maxInr) { toast('Orders must be between ' + fmtInr(l.minInr) + ' and ' + fmtInr(l.maxInr)); return; }
     D.buyUsdt = v;
     D.merchants = (await api('GET', '/orders/merchants?usdt=' + encodeURIComponent(n))).merchants;
     render();
@@ -752,7 +1230,7 @@ var A = {
     var ack = $('#ack');
     if (!ack || !ack.checked) { toast('Tick the box to confirm you checked your statement'); return; }
     await api('POST', '/orders/' + d.id + '/release', { statementChecked: true });
-    toast('USDT released to the buyer');
+    toast('INR released to the buyer');
     await loadSub(V.sub); await refreshMe(); render();
   },
   copy: function (d) {
@@ -783,9 +1261,19 @@ var A = {
   'acct-reject': async function (d) { await api('POST', '/admin/payment-accounts/' + d.id, { decision: 'reject' }); toast('Rejected'); await loadTab('accounts'); render(); },
   credit: async function (d) {
     var n = Number(($('#c-' + d.id).value || '').trim());
-    if (!isFinite(n) || n <= 0) { toast('Enter an amount in USDT'); return; }
+    if (!isFinite(n) || n <= 0) { toast('Enter an amount in INR'); return; }
     await api('POST', '/admin/users/' + d.id + '/credit', { usdt: n, note: 'Manual credit by support' });
     toast('Balance updated'); await loadTab('users'); render();
+  },
+  'block-user': async function (d) {
+    var reason = prompt('Reason for blocking this account (required):');
+    if (!reason || reason.trim().length < 5) { toast('Enter a reason of at least 5 characters'); return; }
+    await api('POST', '/admin/users/' + d.id + '/block', { reason: reason.trim() });
+    toast('Account blocked'); await loadTab('users'); render();
+  },
+  'unblock-user': async function (d) {
+    await api('POST', '/admin/users/' + d.id + '/unblock', {});
+    toast('Account unblocked'); await loadTab('users'); render();
   }
 };
 
@@ -805,6 +1293,48 @@ document.addEventListener('change', function (e) {
 });
 document.addEventListener('input', function (e) {
   if (e.target.id === 'buy-usdt') { var el = $('#est'); if (el) el.textContent = estimate(e.target.value.trim()); }
+  if (e.target.id === 'inbox-search-input') {
+    D.support.search = e.target.value;
+    // debounce server re-fetch on search
+    clearTimeout(D.support._searchTimer);
+    D.support._searchTimer = setTimeout(function () { loadAdminSupportInboxQuiet(); }, 300);
+    // immediate client-side filter for snappy feel
+    var list = D.support.adminInbox || [];
+    var filter = D.support.filter || 'all';
+    var search = D.support.search.toLowerCase().trim();
+    var filtered = list.filter(function (c) {
+      if (filter === 'unread' && !(c.unreadAdminCount > 0)) return false;
+      if (filter === 'open' && c.status !== 'open') return false;
+      if (filter === 'resolved' && c.status !== 'resolved') return false;
+      if (search) {
+        var n = (c.customer && c.customer.name || '').toLowerCase();
+        var em = (c.customer && c.customer.email || '').toLowerCase();
+        if (!n.includes(search) && !em.includes(search)) return false;
+      }
+      return true;
+    });
+    var el = document.querySelector('.inbox-wrap .list') || document.querySelector('.inbox-wrap .card.empty');
+    if (el) {
+      if (filtered.length) {
+        var html = '<div class="list">' + filtered.map(function (c) {
+          var unread = c.unreadAdminCount > 0;
+          return '<button class="inbox-row' + (unread ? ' unread' : '') + '" data-a="open-admin-support" data-id="' + c.id + '">'
+            + '<span class="av">' + initials(c.customer.name) + '</span>'
+            + '<span class="mid">'
+            + '<span class="inbox-top-line"><b>' + esc(c.customer.name) + '</b><span class="muted small">' + ago(c.lastMessageAt) + '</span></span>'
+            + '<span class="inbox-snippet">' + esc(c.lastMessageText || 'Conversation started') + '</span>'
+            + '</span>'
+            + '<span class="end">'
+            + (unread ? '<span class="inbox-badge">' + c.unreadAdminCount + '</span>' : '')
+            + (c.status === 'resolved' ? pill('mute', 'Resolved') : '')
+            + '</span></button>';
+        }).join('') + '</div>';
+        el.outerHTML = html;
+      } else {
+        el.outerHTML = '<div class="card empty">No customer conversations found.</div>';
+      }
+    }
+  }
 });
 
 document.addEventListener('submit', function (e) {
@@ -812,6 +1342,29 @@ document.addEventListener('submit', function (e) {
   var id = e.target.id;
   run(async function () {
     if (id === 'auth-form') return submitAuth();
+    if (id === 'customer-support-form') {
+      var inp = $('#support-msg'), text = (inp.value || '').trim();
+      if (!text) return;
+      inp.value = '';
+      var r = await api('POST', '/support/messages', { text: text });
+      if (!D.support.msgs.some(function (x) { return (x._id || x.id) === (r.message._id || r.message.id); })) {
+        D.support.msgs.push(r.message);
+      }
+      renderSupportMsgs();
+      var again = $('#support-msg'); if (again) again.focus();
+    }
+    if (id === 'admin-support-reply-form') {
+      var inp = $('#admin-reply-msg'), text = (inp.value || '').trim();
+      if (!text) return;
+      inp.value = '';
+      var convId = V.sub.id;
+      var r = await api('POST', '/support/admin/conversations/' + convId + '/reply', { text: text });
+      if (!D.support.adminMsgs.some(function (x) { return (x._id || x.id) === (r.message._id || r.message.id); })) {
+        D.support.adminMsgs.push(r.message);
+      }
+      renderSupportMsgs();
+      var again = $('#admin-reply-msg'); if (again) again.focus();
+    }
     if (id === 'kyc-form') {
       var u = (await api('POST', '/me/kyc', { legalName: $('#k-name').value.trim(), panLast4: $('#k-pan').value.trim() })).user;
       S.me = u; toast('Sent for verification'); render();
@@ -878,7 +1431,7 @@ async function submitDispute() {
     uploaded = (await api('POST', '/disputes/uploads', fd, true)).files;
   }
   var r = await api('POST', '/disputes', { orderId: V.sub.id, reason: $('#d-reason').value, details: details, files: uploaded });
-  toast('Dispute opened. The USDT stays in escrow.');
+  toast('Dispute opened. The escrow holds the funds until resolved.');
   V.stack = []; V.sub = null; V.tab = 'disputes';
   await loadTab('disputes');
   await open({ k: 'dispute', id: r.dispute.id });
@@ -897,6 +1450,7 @@ document.addEventListener('visibilitychange', function () { if (!document.hidden
 
 /* ---------- boot ---------- */
 async function boot() {
+  applyTheme();
   try { S.cfg = await api('GET', '/config'); } catch (e) { /* keep defaults */ }
   S.token = lsGet(KEY);
   if (S.token) {
@@ -905,6 +1459,7 @@ async function boot() {
   }
   render(true);
 }
+applyTheme();
 if ('serviceWorker' in navigator) window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js').catch(function () {}); });
 boot();
 })();

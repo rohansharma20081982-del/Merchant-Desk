@@ -53,6 +53,15 @@ function init(httpServer) {
       }
     });
 
+    if (user.role === 'admin') {
+      socket.join('support:admin');
+    }
+
+    socket.on('support:join', (convId, ack) => {
+      if (convId) socket.join('support:' + convId);
+      if (typeof ack === 'function') ack({ ok: true });
+    });
+
     socket.on('chat:send', async (payload, ack) => {
       const reply = typeof ack === 'function' ? ack : () => {};
       if (!allow()) return reply({ ok: false, error: 'You are sending messages too fast' });
@@ -72,6 +81,29 @@ function emitMessage(msg) {
   if (io) io.to('order:' + msg.order).emit('chat:message', msg);
 }
 
+function emitSupportMessage(msg, conv) {
+  if (!io) return;
+  const convId = String(conv._id || conv.id);
+  io.to('support:' + convId).emit('support:message', {
+    message: msg,
+    conversationId: convId
+  });
+  io.to('support:admin').emit('support:inbox', {
+    conversationId: convId,
+    lastMessageText: conv.lastMessageText,
+    lastMessageAt: conv.lastMessageAt,
+    unreadAdminCount: conv.unreadAdminCount
+  });
+  const customerId = String(conv.customer._id || conv.customer);
+  io.to('user:' + customerId).emit('support:notify', {
+    unreadCustomerCount: conv.unreadCustomerCount
+  });
+}
+
+function emitSupportInboxUpdate() {
+  if (io) io.to('support:admin').emit('support:inbox', {});
+}
+
 function orderUpdated(order) {
   if (!io) return;
   const payload = { id: order.id, ref: order.ref, status: order.status };
@@ -83,4 +115,4 @@ function notify(userId, event, payload) {
   if (io) io.to('user:' + userId).emit(event, payload);
 }
 
-module.exports = { init, emitMessage, orderUpdated, notify };
+module.exports = { init, emitMessage, emitSupportMessage, emitSupportInboxUpdate, orderUpdated, notify };
