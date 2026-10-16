@@ -20,7 +20,7 @@ module.exports = {
   jwtSecret: need('JWT_SECRET'),
   jwtTtl: '7d',
   corsOrigins: (process.env.CORS_ORIGINS || 'http://localhost:3000').split(',').map((s) => s.trim()).filter(Boolean),
-  uploadDir: process.env.UPLOAD_DIR || 'uploads',
+  uploadDir: process.env.UPLOAD_DIR || (process.env.VERCEL ? '/tmp/uploads' : 'uploads'),
 
   // All money is stored as integers: USDT in hundredths, INR in paise.
   rateMinor: Math.round(rateInr * 100), // paise per 1 USDT
