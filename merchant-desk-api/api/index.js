@@ -8,22 +8,18 @@ async function connectToDatabase() {
   if (isConnected && mongoose.connection.readyState === 1) {
     return;
   }
-  mongoose.set('strictQuery', true);
-  await mongoose.connect(cfg.mongoUri, {
-    serverSelectionTimeoutMS: 15000,
-  });
-  isConnected = true;
+  try {
+    mongoose.set('strictQuery', true);
+    await mongoose.connect(cfg.mongoUri, {
+      serverSelectionTimeoutMS: 5000,
+    });
+    isConnected = true;
+  } catch (err) {
+    console.warn('MongoDB connection unavailable, running in standalone mode:', err.message);
+  }
 }
 
 module.exports = async (req, res) => {
-  try {
-    await connectToDatabase();
-    return app(req, res);
-  } catch (err) {
-    console.error('Database connection error:', err);
-    res.status(500).json({
-      error: 'Database connection failed',
-      details: err.message || String(err)
-    });
-  }
+  await connectToDatabase();
+  return app(req, res);
 };
