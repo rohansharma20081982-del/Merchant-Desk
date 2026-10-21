@@ -36,7 +36,7 @@ function blank() {
     admin: { kyc: [], kycCounts: { pending: 0, history: 0 }, kycFilter: 'pending', accounts: [], disputes: [], orders: [], users: [] } };
 }
 var D = blank();
-var V = { tab: null, sub: null, stack: [], filter: 'all', authMode: 'login', dstatus: 'review', busy: false, gmailInputVal: '' };
+var V = { tab: null, sub: null, stack: [], filter: 'all', authMode: 'login', dstatus: 'review', busy: false, emailVerifyPending: null, devVerifyUrl: null };
 
 var ST = {
   awaiting_payment: { l: 'Awaiting payment', c: 'warn' },
@@ -458,47 +458,42 @@ function authView() {
     + '</div>'
     + '<div class="seg" role="tablist">'
     + '<button type="button" role="tab" aria-selected="' + (V.authMode === 'login') + '" data-a="auth-mode" data-m="login">Sign in</button>'
-    + '<button type="button" role="tab" aria-selected="' + (V.authMode === 'gmail') + '" data-a="auth-mode" data-m="gmail">Gmail Login</button>'
     + '<button type="button" role="tab" aria-selected="' + (V.authMode === 'register') + '" data-a="auth-mode" data-m="register">Create account</button>'
     + '</div>'
-    + (V.authMode === 'gmail'
-      ? '<form id="gmail-login-form" class="stack" novalidate>'
-        + '<div class="note good" style="margin-top:2px"><span>' + ic('shield', 18) + '</span><span><b>1-Click Gmail Login</b><br>Instant access with your Google / Gmail account. No OTP verification required.</span></div>'
-        + field('g-email', 'Gmail Address', 'email', 'email', 'inputmode="email" autocomplete="email" placeholder="e.g. yourname@gmail.com" value="' + esc(V.gmailInputVal || '') + '"')
-        + '<div class="opts" role="radiogroup" aria-label="Account type">'
-        + '<label class="opt"><input type="radio" name="gmail-role" value="buyer" checked><b>I send INR (Buyer)</b><span>Instant escrow protection</span></label>'
-        + '<label class="opt"><input type="radio" name="gmail-role" value="merchant"><b>I receive INR (Merchant)</b><span>Receive rupee transfers</span></label></div>'
-        + '<p class="err" id="auth-err" role="alert"></p>'
-        + '<button class="btn primary xl google-btn" type="submit" id="gmail-submit-btn" style="display:flex;align-items:center;justify-content:center;gap:10px;font-size:15px;padding:13px;width:100%">'
-        + '<svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>'
-        + '<span>Click to Log in with Gmail</span>'
-        + '</button>'
-        + '<div class="google-auth-box" style="margin-top:6px">'
-        + '<div id="google-gsi-btn" class="google-gsi-slot"></div>'
+    + (V.emailVerifyPending
+      ? '<div class="stack" style="text-align:center;padding:16px 4px">'
+        + '<div style="font-size:46px;line-height:1;margin-bottom:10px">✉️</div>'
+        + '<h3 style="margin:0 0 8px;font-size:18px">Verify your Gmail address</h3>'
+        + '<p class="muted small" style="margin:0 0 16px;line-height:1.55">'
+        + 'We have dispatched a <b>click-to-verify link</b> to <b>' + esc(V.emailVerifyPending) + '</b>.<br>'
+        + 'Open your email and click the button inside to activate your account.'
+        + '</p>'
+        + (V.devVerifyUrl ? '<div style="margin-bottom:14px"><a class="btn primary" href="' + esc(V.devVerifyUrl) + '" id="dev-verify-link" style="display:inline-block;padding:10px 18px;font-size:13.5px">Click to verify email now (Dev mode)</a></div>' : '')
+        + '<div class="btns row2" style="margin-top:6px">'
+        + '<button class="btn ghost sm" type="button" data-a="resend-verify-email">Resend link</button>'
+        + '<button class="btn ghost sm" type="button" data-a="back-to-login">Back to Sign in</button>'
         + '</div>'
-        + '</form>'
+        + '</div>'
       : '<form id="auth-form" class="stack" novalidate>'
         + (reg ? field('a-name', 'Full name', 'text', 'name') : '')
-        + field('a-email', 'Email address', 'email', 'email', 'inputmode="email" autocapitalize="off"')
+        + field('a-email', (reg ? 'Gmail / Email address' : 'Email address'), 'email', 'email', 'inputmode="email" autocapitalize="off"')
         + (reg ? field('a-phone', 'Phone number (optional)', 'tel', 'tel', 'inputmode="tel" placeholder="+91 98765 43210"') : '')
         + field('a-pass', 'Password' + (reg ? ' (10 or more characters)' : ''), 'password', reg ? 'new-password' : 'current-password')
         + (reg ? '<div class="opts" role="radiogroup" aria-label="Account type">'
           + '<label class="opt"><input type="radio" name="role" value="buyer" checked><b>I send INR</b><span>Send rupees with escrow protection</span></label>'
           + '<label class="opt"><input type="radio" name="role" value="merchant"><b>I receive INR</b><span>Receive rupees, release from escrow</span></label></div>' : '')
         + '<p class="err" id="auth-err" role="alert"></p>'
-        + '<button class="btn primary" type="submit">' + (reg ? 'Create account' : 'Sign in') + '</button>'
+        + '<button class="btn primary" type="submit">' + (reg ? 'Create account & Send verification link' : 'Sign in') + '</button>'
         + '</form>'
-    )
-    + (V.authMode !== 'gmail'
-      ? '<div class="auth-divider"><span>or 1-click access</span></div>'
+        + '<div class="auth-divider"><span>or continue with</span></div>'
         + '<div class="google-auth-box">'
         + '<div id="google-gsi-btn" class="google-gsi-slot"></div>'
-        + '<button type="button" class="google-btn" data-a="auth-mode" data-m="gmail">'
+        + '<button type="button" class="google-btn" data-a="google-login">'
         + '<svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>'
-        + '<span>Click to Log in with Gmail</span>'
+        + '<span>' + (reg ? 'Sign up with Google (Instant Verification)' : 'Sign in with Google') + '</span>'
         + '</button>'
         + '</div>'
-      : '')
+    )
     + '</div>'
     + '</section>'
 
@@ -1368,23 +1363,46 @@ var A = {
   tab: function (d) { return go(d.t); },
   filter: function (d) { V.filter = d.f; render(); },
   dstatus: async function (d) { V.dstatus = d.s; await loadTab('disputes'); render(); },
-  'auth-mode': function (d) { V.authMode = d.m; render(true); },
+  'auth-mode': function (d) { V.authMode = d.m; V.emailVerifyPending = null; render(true); },
+  'resend-verify-email': async function () {
+    if (!V.emailVerifyPending) return;
+    try {
+      var r = await api('POST', '/auth/resend-verification', { email: V.emailVerifyPending });
+      if (r.verifyUrl) V.devVerifyUrl = r.verifyUrl;
+      render(true);
+      toast('Verification link resent to ' + V.emailVerifyPending);
+    } catch (e) {
+      toast(fieldMsg(e));
+    }
+  },
+  'back-to-login': function () {
+    V.emailVerifyPending = null;
+    V.authMode = 'login';
+    render(true);
+  },
   'verify-contact': function (d) {
     showVerifyContactModal('sms');
   },
   'verify-phone': function () {
     showVerifyContactModal('sms');
   },
-  'gmail-click-login': function () {
-    submitGmailLogin();
-  },
   'google-login': async function () {
     var clientId = (S.cfg && S.cfg.googleClientId) || window.__GOOGLE_CLIENT_ID;
     if (clientId && window.google && window.google.accounts && window.google.accounts.id) {
       window.google.accounts.id.prompt();
     } else {
-      V.authMode = 'gmail';
-      render(true);
+      var emailInput = prompt('Enter your Gmail address to sign in / verify:');
+      if (!emailInput || !emailInput.trim()) return;
+      var role = V.authMode === 'register' ? (document.querySelector('input[name=role]:checked') ? document.querySelector('input[name=role]:checked').value : 'buyer') : 'buyer';
+      try {
+        toast('Signing in with Google...');
+        var j = await api('POST', '/auth/google', { email: emailInput.trim(), role: role });
+        S.token = j.token; S.me = j.user; lsSet(KEY, S.token);
+        toast('Welcome, ' + j.user.name + '! Logged in with Gmail.');
+        await start();
+      } catch (e) {
+        toast(fieldMsg(e));
+      }
     }
   },
   back: function () { return back(); },
@@ -1658,6 +1676,15 @@ async function submitAuth() {
   var j;
   try { j = await api('POST', reg ? '/auth/register' : '/auth/login', body); }
   catch (e) { err.textContent = fieldMsg(e); return; }
+
+  if (reg && j.requiresVerification && j.requiresVerification.email) {
+    V.emailVerifyPending = body.email;
+    V.devVerifyUrl = j.verifyUrl || null;
+    render(true);
+    toast('Verification link sent! Check your Gmail.');
+    return;
+  }
+
   S.token = j.token; S.me = j.user; lsSet(KEY, S.token);
   await start();
 }
@@ -1906,10 +1933,64 @@ setInterval(function () {
 
 document.addEventListener('visibilitychange', function () { if (!document.hidden && S.me) scheduleRefresh(); });
 
+/* ---------- click-to-verify email check on boot / hash change ---------- */
+async function checkEmailVerificationLink() {
+  if (typeof window === 'undefined' || !window.location) return false;
+  var hash = window.location.hash || '';
+  if (hash.includes('verify_email=')) {
+    var token = hash.split('verify_email=')[1].split('&')[0];
+    try {
+      if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      } else {
+        window.location.hash = '';
+      }
+    } catch (e) { window.location.hash = ''; }
+    try {
+      toast('Verifying your email address...');
+      var r = await api('POST', '/auth/verify-email', { token: token });
+      S.token = r.token;
+      S.me = r.user;
+      lsSet(KEY, S.token);
+      toast('Email verified successfully! Welcome to your desk.');
+      await start();
+      return true;
+    } catch (e) {
+      toast(fieldMsg(e));
+    }
+  } else if (hash.includes('verified=true')) {
+    var parts = hash.slice(1).split('&');
+    var tok = null;
+    parts.forEach(function (p) { if (p.startsWith('token=')) tok = p.split('=')[1]; });
+    try {
+      if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      } else {
+        window.location.hash = '';
+      }
+    } catch (e) { window.location.hash = ''; }
+    if (tok) {
+      S.token = tok;
+      lsSet(KEY, S.token);
+      toast('Email verified successfully!');
+      await refreshMe();
+      await start();
+      return true;
+    }
+  }
+  return false;
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('hashchange', checkEmailVerificationLink);
+}
+
 /* ---------- boot ---------- */
 async function boot() {
   applyTheme();
   try { S.cfg = await api('GET', '/config'); } catch (e) { /* keep defaults */ }
+  var verified = await checkEmailVerificationLink();
+  if (verified) return;
   S.token = lsGet(KEY);
   if (S.token) {
     try { await refreshMe(); await start(); return; }

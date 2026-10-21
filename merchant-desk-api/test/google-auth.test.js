@@ -89,3 +89,34 @@ test('1-click gmail login logs in or creates user without OTP', async () => {
   assert.equal(j2.isNewUser, false);
 });
 
+test('create account dispatches click-to-verify email and verifies via link token', async () => {
+  const email = 'newtrader@gmail.com';
+  const regRes = await req('POST', '/api/auth/register', {
+    name: 'New Trader',
+    email,
+    password: 'password12345',
+    role: 'buyer'
+  });
+  assert.equal(regRes.status, 201);
+  const regData = await regRes.json();
+  assert.ok(regData.verifyUrl, 'Should return verifyUrl in non-production');
+  assert.equal(regData.user.emailVerified, false);
+
+  // Extract raw token from verifyUrl
+  const rawToken = regData.verifyUrl.split('verify_email=')[1];
+  assert.ok(rawToken);
+
+  // Call verify-email endpoint with token
+  const verifyRes = await req('POST', '/api/auth/verify-email', { token: rawToken });
+  assert.equal(verifyRes.status, 200);
+  const verifyData = await verifyRes.json();
+  assert.equal(verifyData.verified, true);
+  assert.equal(verifyData.user.emailVerified, true);
+  assert.ok(verifyData.token);
+
+  // Calling with invalid or expired token fails with 400
+  const invalidRes = await req('POST', '/api/auth/verify-email', { token: 'invalid_token_12345' });
+  assert.equal(invalidRes.status, 400);
+});
+
+

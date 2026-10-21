@@ -13,6 +13,8 @@ const userSchema = new Schema(
     phoneVerifiedAt: Date,
     emailVerified: { type: Boolean, default: false },
     emailVerifiedAt: Date,
+    emailVerifyToken: { type: String, select: false },
+    emailVerifyExpiresAt: { type: Date, select: false },
 
     // Identity check. Legal name and last 4 chars of PAN are stored.
     kyc: {
