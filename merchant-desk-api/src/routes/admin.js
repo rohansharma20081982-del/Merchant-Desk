@@ -11,7 +11,9 @@ const { objectId, normalizeName } = require('../validators');
 const { usdtToMinor } = require('../money');
 const { withTx, ledger } = require('../services/common');
 const { resolveDispute } = require('../services/disputes');
+const orders = require('../services/orders');
 const S = require('../serializers');
+const realtime = require('../realtime');
 
 router.use(requireAuth, requireRole('admin'));
 
@@ -203,6 +205,11 @@ router.post('/users/:id/block', ah(async (req, res) => {
   if (u.role === 'merchant' && u.online) {
     await User.updateOne({ _id: u._id }, { $set: { online: false } });
   }
+  // Notify customer immediately in real-time
+  realtime.notify(String(u._id), 'user:banned', {
+    reason: b.reason,
+    action: 'blocked'
+  });
   res.json({ user: S.user(u) });
 }));
 
@@ -215,6 +222,56 @@ router.post('/users/:id/unblock', ah(async (req, res) => {
   );
   if (!u) throw new HttpError(409, 'User not found or is not blocked');
   res.json({ user: S.user(u) });
+}));
+
+/* ---- delete account after blocking ---- */
+router.delete('/users/:id', ah(async (req, res) => {
+  objectId.parse(req.params.id);
+  const u = await User.findOne({ _id: req.params.id, role: { $ne: 'admin' } });
+  if (!u) throw new HttpError(404, 'User not found');
+  if (!u.blocked) {
+    throw new HttpError(400, 'User must be blocked before the account can be deleted');
+  }
+
+  // Guard: ensure no active in-flight trades (paid or disputed) involving this user
+  const hasActiveOrders = await Order.exists({
+    $or: [{ merchant: u._id }, { buyer: u._id }],
+    status: { $in: ['paid', 'disputed'] }
+  });
+  if (hasActiveOrders) {
+    throw new HttpError(409, 'Cannot delete user with in-progress paid or disputed orders. Settle or resolve them first.');
+  }
+
+  if (u.balance && u.balance.escrow > 0) {
+    throw new HttpError(409, 'Cannot delete user with funds currently locked in escrow.');
+  }
+
+  const reason = u.blockReason || 'Account permanently banned and deleted by administrator';
+
+  // Notify customer in real time so pop-up triggers before session termination
+  realtime.notify(String(u._id), 'user:banned', {
+    reason: reason,
+    action: 'deleted'
+  });
+
+  // Cancel any open awaiting_payment orders properly to return merchant escrow
+  const pendingOrders = await Order.find({
+    $or: [{ merchant: u._id }, { buyer: u._id }],
+    status: 'awaiting_payment'
+  });
+  for (const o of pendingOrders) {
+    try {
+      await orders.cancel({
+        orderId: o._id,
+        actorId: null,
+        reason: 'Account banned and deleted by administration'
+      });
+    } catch (_) {}
+  }
+
+  await User.deleteOne({ _id: u._id });
+
+  res.json({ ok: true, message: 'Account permanently deleted' });
 }));
 
 module.exports = router;

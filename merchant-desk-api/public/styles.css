@@ -566,7 +566,164 @@ body.auth-mode{max-width:100% !important}
   .landing-lead{font-size:18px}
   .landing-section{padding:60px 24px}
   .steps-grid{grid-template-columns:repeat(3,1fr)}
-  .features-grid{grid-template-columns:repeat(2,1fr)}
+/* ── Google Auth & Verified Email Elements ── */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 18px 0 14px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--line);
+}
+.auth-divider span {
+  padding: 0 12px;
+}
+.google-auth-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.google-gsi-slot {
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+  width: 100%;
+}
+.google-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 18px;
+  border-radius: 99px;
+  background: var(--surface);
+  border: 1.5px solid var(--line);
+  color: var(--fg);
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: background .15s, border-color .15s, transform .1s;
+}
+.google-btn:hover {
+  background: var(--bg);
+  border-color: var(--brand);
+}
+.google-btn:active {
+  transform: scale(0.99);
+}
+.google-badge-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--good);
+  margin: 4px 0 0;
+  font-weight: 500;
 }
 
+/* ── Account Banned Pop-up Modal ── */
+.banned-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+}
+.banned-modal-card {
+  background: var(--surface);
+  border: 1.5px solid var(--bad);
+  border-radius: 20px;
+  max-width: 440px;
+  width: 100%;
+  padding: 28px 24px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.banned-icon-wrap {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--bad-bg);
+  color: var(--bad);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.15);
+}
+.banned-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--bad);
+  margin: 0 0 6px;
+}
+.banned-lead {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0 0 16px;
+  line-height: 1.45;
+}
+.banned-reason-box {
+  width: 100%;
+  background: var(--bad-bg);
+  border: 1px solid var(--bad);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  text-align: left;
+}
+.banned-reason-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--bad-fg);
+  margin-bottom: 4px;
+}
+.banned-reason-val {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--fg);
+  word-break: break-word;
+  line-height: 1.4;
+}
+.banned-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 20px;
+  line-height: 1.4;
+}
+
+/* OTP Inputs and Contact Verification */
+.otp-input {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  text-align: center;
+  font-family: monospace, var(--font-body);
+}
+.contact-item {
+  padding: 4px 0;
+}
 

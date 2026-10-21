@@ -9,7 +9,18 @@ function notFound(req, res) {
 
 // eslint-disable-next-line no-unused-vars
 function errorHandler(err, req, res, next) {
-  if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
+  if (err instanceof HttpError) {
+    const data = { error: err.message };
+    if (err.banned) {
+      data.banned = true;
+      data.reason = err.reason;
+    }
+    if (err.retryAfter) {
+      res.setHeader('Retry-After', String(err.retryAfter));
+      data.retryAfter = err.retryAfter;
+    }
+    return res.status(err.status).json(data);
+  }
   if (err instanceof ZodError) {
     return res.status(400).json({
       error: 'Check the highlighted fields',

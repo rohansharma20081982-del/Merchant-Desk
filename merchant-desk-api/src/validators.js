@@ -7,4 +7,42 @@ const pageLimit = z.coerce.number().int().min(1).max(100).default(30);
 
 const normalizeName = (s) => String(s || '').toUpperCase().replace(/[^A-Z ]/g, ' ').replace(/\s+/g, ' ').trim();
 
-module.exports = { objectId, upiId, usdtAmount, pageLimit, normalizeName };
+// OTP and Phone Auth Validators
+const phoneInput = z.string().trim().min(7, 'Phone number is too short').max(20, 'Phone number is too long');
+const otpCode = z.string().trim().regex(/^\d{6}$/, 'Enter a 6-digit numeric verification code');
+
+const otpSendSchema = z.object({
+  channel: z.enum(['sms', 'email']),
+  destination: z.string().trim().min(3, 'Destination is required'),
+  purpose: z.enum(['signup', 'login', 'verify_contact', 'password_reset'])
+});
+
+const otpVerifySchema = z.object({
+  channel: z.enum(['sms', 'email']),
+  destination: z.string().trim().min(3, 'Destination is required'),
+  purpose: z.enum(['signup', 'login', 'verify_contact', 'password_reset']),
+  otp: otpCode
+});
+
+const phoneLoginRequestSchema = z.object({
+  phone: phoneInput
+});
+
+const phoneLoginVerifySchema = z.object({
+  phone: phoneInput,
+  otp: otpCode
+});
+
+module.exports = {
+  objectId,
+  upiId,
+  usdtAmount,
+  pageLimit,
+  normalizeName,
+  phoneInput,
+  otpCode,
+  otpSendSchema,
+  otpVerifySchema,
+  phoneLoginRequestSchema,
+  phoneLoginVerifySchema
+};

@@ -4,8 +4,15 @@ const userSchema = new Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 80 },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    passwordHash: { type: String, required: true, select: false },
+    passwordHash: { type: String, select: false },
     role: { type: String, enum: ['merchant', 'buyer', 'admin'], required: true },
+    authProvider: { type: String, enum: ['local', 'google'], default: 'local' },
+    googleId: { type: String, sparse: true, index: true },
+    phone: { type: String, unique: true, sparse: true, trim: true },
+    phoneVerified: { type: Boolean, default: false },
+    phoneVerifiedAt: Date,
+    emailVerified: { type: Boolean, default: false },
+    emailVerifiedAt: Date,
 
     // Identity check. Legal name and last 4 chars of PAN are stored.
     kyc: {

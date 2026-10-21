@@ -18,6 +18,14 @@ function user(u) {
       : null,
     online: u.online,
     blocked: u.blocked || false,
+    authProvider: u.authProvider || 'local',
+    emailVerified: Boolean(u.emailVerified),
+    email_verified: Boolean(u.emailVerified),
+    emailVerifiedAt: u.emailVerifiedAt || null,
+    phone: u.phone || null,
+    phoneVerified: Boolean(u.phoneVerified),
+    phone_verified: Boolean(u.phoneVerified),
+    phoneVerifiedAt: u.phoneVerifiedAt || null,
     balance: { available: fromMinor(u.balance.available), escrow: fromMinor(u.balance.escrow) }
   };
 }

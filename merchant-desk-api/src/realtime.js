@@ -18,8 +18,9 @@ function init(httpServer) {
     try {
       const token = socket.handshake.auth && socket.handshake.auth.token;
       const payload = jwt.verify(token, cfg.jwtSecret);
-      const user = await User.findById(payload.sub).select('role');
+      const user = await User.findById(payload.sub).select('role blocked blockReason');
       if (!user) return next(new Error('unauthorized'));
+      if (user.blocked) return next(new Error('banned'));
       socket.data.user = { id: String(user._id), role: user.role };
       return next();
     } catch (e) {
@@ -57,9 +58,25 @@ function init(httpServer) {
       socket.join('support:admin');
     }
 
-    socket.on('support:join', (convId, ack) => {
-      if (convId) socket.join('support:' + convId);
-      if (typeof ack === 'function') ack({ ok: true });
+    socket.on('support:join', async (convId, ack) => {
+      try {
+        if (!convId) {
+          if (typeof ack === 'function') ack({ ok: false, error: 'Missing conversation ID' });
+          return;
+        }
+        if (user.role !== 'admin') {
+          const SupportConversation = require('./models/SupportConversation');
+          const isParticipant = await SupportConversation.exists({ _id: convId, customer: user.id });
+          if (!isParticipant) {
+            if (typeof ack === 'function') ack({ ok: false, error: 'Unauthorized to join this conversation' });
+            return;
+          }
+        }
+        socket.join('support:' + convId);
+        if (typeof ack === 'function') ack({ ok: true });
+      } catch (e) {
+        if (typeof ack === 'function') ack({ ok: false, error: e.message });
+      }
     });
 
     socket.on('chat:send', async (payload, ack) => {

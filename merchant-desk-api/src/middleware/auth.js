@@ -15,7 +15,12 @@ async function requireAuth(req, res, next) {
     }
     const user = await User.findById(payload.sub);
     if (!user) throw new HttpError(401, 'Sign in required');
-    if (user.blocked) throw new HttpError(403, 'Your account has been suspended. Contact support.');
+    if (user.blocked) {
+      const err = new HttpError(403, `Your account has been banned: ${user.blockReason || 'Terms violation'}`);
+      err.banned = true;
+      err.reason = user.blockReason || 'Terms violation';
+      throw err;
+    }
     req.user = user;
     next();
   } catch (e) {
