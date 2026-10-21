@@ -12,6 +12,7 @@
     "dev": "node --watch src/server.js",
     "seed:admin": "node scripts/seed-admin.js",
     "seed:demo": "node scripts/seed-demo.js",
+    "reset:db": "node scripts/reset-db.js",
     "smoke": "node scripts/smoke.js",
     "mongo": "node scripts/local-mongo.js",
     "test": "node --test test/*.test.js"
