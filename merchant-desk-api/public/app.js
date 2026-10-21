@@ -479,7 +479,6 @@
         : '<form id="auth-form" class="stack" novalidate>'
         + (reg ? field('a-name', 'Full name', 'text', 'name') : '')
         + field('a-email', (reg ? 'Gmail / Email address' : 'Email address'), 'email', 'email', 'inputmode="email" autocapitalize="off"')
-        + (reg ? field('a-phone', 'Phone number (optional)', 'tel', 'tel', 'inputmode="tel" placeholder="+91 98765 43210"') : '')
         + field('a-pass', 'Password' + (reg ? ' (10 or more characters)' : ''), 'password', reg ? 'new-password' : 'current-password')
         + (reg ? '<div class="opts" role="radiogroup" aria-label="Account type">'
           + '<label class="opt"><input type="radio" name="role" value="buyer" checked><b>I send INR</b><span>Send rupees with escrow protection</span></label>'
@@ -843,15 +842,8 @@
       + (me.role !== 'admin' ? pill(kc[0], kc[1], true) : pill('info', 'Support')) + '</section>';
 
     h += '<section class="card stack" style="gap:12px">'
-      + '<div class="sec-head"><h2>Contact details & verification</h2></div>'
+      + '<div class="sec-head"><h2>Account & Email details</h2></div>'
       + '<div class="contact-item">'
-      + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">'
-      + '<div><div class="muted small" style="margin:0 0 2px">Mobile Phone</div><div style="margin:0;font-weight:600">' + esc(me.phone || 'No phone linked') + '</div></div>'
-      + (me.phoneVerified ? pill('good', 'Verified Phone', true) : pill('warn', 'Unverified Phone', true))
-      + '</div>'
-      + (!me.phoneVerified ? '<div style="margin-top:8px"><button class="btn ghost sm" data-a="verify-contact" data-channel="sms">Verify Phone Number</button></div>' : '')
-      + '</div>'
-      + '<div class="contact-item" style="border-top:1px solid var(--line);padding-top:10px">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">'
       + '<div><div class="muted small" style="margin:0 0 2px">Email Address</div><div style="margin:0;font-weight:600">' + esc(me.email) + '</div></div>'
       + (me.emailVerified ? pill('good', 'Verified Email', true) : pill('info', 'Gmail / Email Account', true))
@@ -1694,8 +1686,6 @@
     var body = { email: $('#a-email').value.trim(), password: $('#a-pass').value };
     if (reg) {
       body.name = $('#a-name').value.trim();
-      var pInput = $('#a-phone');
-      if (pInput && pInput.value.trim()) body.phone = pInput.value.trim();
       var r = document.querySelector('input[name=role]:checked');
       body.role = r ? r.value : 'buyer';
     }

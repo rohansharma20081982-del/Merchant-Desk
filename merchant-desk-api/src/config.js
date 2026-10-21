@@ -37,7 +37,7 @@ module.exports = {
   otpMaxSendsPerHour: Number(process.env.OTP_MAX_SENDS_PER_HOUR || 5),
 
   // Verification requirements at signup
-  requirePhoneVerification: process.env.REQUIRE_PHONE_VERIFICATION === 'true',
+  requirePhoneVerification: false,
   requireEmailVerification: process.env.REQUIRE_EMAIL_VERIFICATION === 'true',
 
   // SMS Provider settings

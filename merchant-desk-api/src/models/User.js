@@ -7,8 +7,8 @@ const userSchema = new Schema(
     passwordHash: { type: String, select: false },
     role: { type: String, enum: ['merchant', 'buyer', 'admin'], required: true },
     authProvider: { type: String, enum: ['local', 'google'], default: 'local' },
-    googleId: { type: String },
-    phone: { type: String, trim: true },
+    googleId: { type: String, sparse: true, index: true },
+    phone: { type: String, unique: true, sparse: true, trim: true },
     phoneVerified: { type: Boolean, default: false },
     phoneVerifiedAt: Date,
     emailVerified: { type: Boolean, default: false },
@@ -52,16 +52,6 @@ const userSchema = new Schema(
 userSchema.index(
   { 'paymentAccount.upi': 1 },
   { unique: true, partialFilterExpression: { 'paymentAccount.upi': { $type: 'string' } } }
-);
-
-// Unique partial indexes that ignore null or undefined values
-userSchema.index(
-  { phone: 1 },
-  { unique: true, partialFilterExpression: { phone: { $type: 'string' } } }
-);
-userSchema.index(
-  { googleId: 1 },
-  { unique: true, partialFilterExpression: { googleId: { $type: 'string' } } }
 );
 
 module.exports = model('User', userSchema);
