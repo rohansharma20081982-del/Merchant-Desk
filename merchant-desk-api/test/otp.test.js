@@ -215,22 +215,31 @@ test('5. Attempt limits (max 5 incorrect attempts before invalidation)', async (
 test('6. Resend cooldown and hourly rate limiting', async () => {
   // First send
   const r1 = await req('POST', '/api/auth/otp/send', {
-    channel: 'email',
-    destination: 'test@example.com',
+    channel: 'sms',
+    destination: '9876500004',
     purpose: 'signup'
   });
   assert.equal(r1.status, 200);
 
   // Immediate second send fails with cooldown 429
   const r2 = await req('POST', '/api/auth/otp/send', {
-    channel: 'email',
-    destination: 'test@example.com',
+    channel: 'sms',
+    destination: '9876500004',
     purpose: 'signup'
   });
   assert.equal(r2.status, 429);
   assert.ok(r2.headers.get('retry-after'));
   const d2 = await r2.json();
   assert.match(d2.error, /wait/i);
+});
+
+test('7. OTP rejects email channel (OTP removed from Gmail in favor of 1-click login)', async () => {
+  const r = await req('POST', '/api/auth/otp/send', {
+    channel: 'email',
+    destination: 'test@gmail.com',
+    purpose: 'verify_contact'
+  });
+  assert.equal(r.status, 400);
 });
 
 test('7. Phone Login: No account enumeration', async () => {

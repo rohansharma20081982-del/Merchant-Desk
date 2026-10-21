@@ -168,8 +168,11 @@ class OtpService {
    * Automatically invalidates prior pending OTPs for the same destination & purpose.
    */
   static async sendOtp({ channel, destination, purpose, user = null, ip = '' }) {
-    if (!['sms', 'email'].includes(channel)) {
-      throw new HttpError(400, 'Invalid OTP channel. Must be sms or email');
+    if (channel === 'email') {
+      throw new HttpError(400, 'Email OTP verification has been removed. Please use Click to Log in with Gmail.');
+    }
+    if (channel !== 'sms') {
+      throw new HttpError(400, 'Invalid OTP channel. Must be sms');
     }
     if (!['signup', 'login', 'verify_contact', 'password_reset'].includes(purpose)) {
       throw new HttpError(400, 'Invalid OTP purpose');
@@ -282,6 +285,9 @@ class OtpService {
    * - If user is provided / logged in, marks contact verified.
    */
   static async verifyOtp({ channel, destination, purpose, otp, user = null, ip = '' }) {
+    if (channel === 'email') {
+      throw new HttpError(400, 'Email OTP verification has been removed. Please use Click to Log in with Gmail.');
+    }
     if (!otp || typeof otp !== 'string' || otp.trim().length !== 6) {
       throw new HttpError(400, 'Enter a valid 6-digit verification code');
     }

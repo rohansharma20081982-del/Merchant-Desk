@@ -3,17 +3,29 @@ process.env.JWT_SECRET = 'test-secret-test-secret-test-secret';
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
+const mongoose = require('mongoose');
+const { MongoMemoryServer } = require('mongodb-memory-server');
 const app = require('../src/app');
 const { verifyGoogleToken } = require('../src/services/googleAuth');
 const { HttpError } = require('../src/errors');
 
-let server, base;
+let mongod, server, base;
 test.before(async () => {
+  if (mongoose.connection.readyState === 0) {
+    mongod = await MongoMemoryServer.create();
+    await mongoose.connect(mongod.getUri());
+  }
   server = http.createServer(app);
   await new Promise((r) => server.listen(0, r));
   base = `http://127.0.0.1:${server.address().port}`;
 });
-test.after(() => server.close());
+test.after(async () => {
+  server.close();
+  if (mongod) {
+    await mongoose.disconnect();
+    await mongod.stop();
+  }
+});
 
 const req = (method, path, body, headers = {}) =>
   fetch(base + path, { method, headers: { 'Content-Type': 'application/json', ...headers }, body: body ? JSON.stringify(body) : undefined });
@@ -53,3 +65,27 @@ test('/api/config exposes googleClientId and CSP permits Google Identity Service
   const csp = home.headers.get('content-security-policy') || '';
   assert.match(csp, /accounts\.google\.com/);
 });
+
+test('1-click gmail login logs in or creates user without OTP', async () => {
+  const r = await req('POST', '/api/auth/google', {
+    email: 'oneclick@gmail.com',
+    role: 'buyer'
+  });
+  assert.equal(r.status, 201);
+  const j = await r.json();
+  assert.ok(j.token);
+  assert.equal(j.user.email, 'oneclick@gmail.com');
+  assert.equal(j.user.emailVerified, true);
+  assert.equal(j.user.authProvider, 'google');
+  assert.equal(j.isNewUser, true);
+
+  // Calling again logs in existing user seamlessly
+  const r2 = await req('POST', '/api/auth/gmail', {
+    email: 'oneclick@gmail.com'
+  });
+  assert.equal(r2.status, 200);
+  const j2 = await r2.json();
+  assert.ok(j2.token);
+  assert.equal(j2.isNewUser, false);
+});
+

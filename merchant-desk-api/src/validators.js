@@ -12,13 +12,13 @@ const phoneInput = z.string().trim().min(7, 'Phone number is too short').max(20,
 const otpCode = z.string().trim().regex(/^\d{6}$/, 'Enter a 6-digit numeric verification code');
 
 const otpSendSchema = z.object({
-  channel: z.enum(['sms', 'email']),
+  channel: z.enum(['sms']),
   destination: z.string().trim().min(3, 'Destination is required'),
   purpose: z.enum(['signup', 'login', 'verify_contact', 'password_reset'])
 });
 
 const otpVerifySchema = z.object({
-  channel: z.enum(['sms', 'email']),
+  channel: z.enum(['sms']),
   destination: z.string().trim().min(3, 'Destination is required'),
   purpose: z.enum(['signup', 'login', 'verify_contact', 'password_reset']),
   otp: otpCode

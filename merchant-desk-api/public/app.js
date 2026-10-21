@@ -36,7 +36,7 @@ function blank() {
     admin: { kyc: [], kycCounts: { pending: 0, history: 0 }, kycFilter: 'pending', accounts: [], disputes: [], orders: [], users: [] } };
 }
 var D = blank();
-var V = { tab: null, sub: null, stack: [], filter: 'all', authMode: 'login', dstatus: 'review', busy: false, phoneOtpSent: false, phoneDestinationMasked: '', phoneCooldown: 0, phoneInputVal: '' };
+var V = { tab: null, sub: null, stack: [], filter: 'all', authMode: 'login', dstatus: 'review', busy: false, phoneOtpSent: false, phoneDestinationMasked: '', phoneCooldown: 0, phoneInputVal: '', gmailInputVal: '' };
 
 var ST = {
   awaiting_payment: { l: 'Awaiting payment', c: 'warn' },
@@ -458,48 +458,66 @@ function authView() {
     + '</div>'
     + '<div class="seg" role="tablist">'
     + '<button type="button" role="tab" aria-selected="' + (V.authMode === 'login') + '" data-a="auth-mode" data-m="login">Sign in</button>'
+    + '<button type="button" role="tab" aria-selected="' + (V.authMode === 'gmail') + '" data-a="auth-mode" data-m="gmail">Gmail Login</button>'
     + '<button type="button" role="tab" aria-selected="' + (V.authMode === 'phone') + '" data-a="auth-mode" data-m="phone">Phone Login</button>'
     + '<button type="button" role="tab" aria-selected="' + (V.authMode === 'register') + '" data-a="auth-mode" data-m="register">Create account</button>'
     + '</div>'
-    + (V.authMode === 'phone'
-      ? (!V.phoneOtpSent
-        ? '<form id="phone-login-request-form" class="stack" novalidate>'
-          + field('p-phone', 'Phone Number', 'tel', 'tel', 'inputmode="tel" placeholder="e.g. 9876543210 or +919876543210" value="' + esc(V.phoneInputVal || '') + '"')
-          + '<div class="note info" style="margin-top:2px"><span>' + ic('shield', 18) + '</span><span>We will send a 6-digit verification code to this phone number via SMS.</span></div>'
-          + '<p class="err" id="auth-err" role="alert"></p>'
-          + '<button class="btn primary" type="submit">Send verification code</button>'
-          + '</form>'
-        : '<form id="phone-login-verify-form" class="stack" novalidate>'
-          + '<div class="note good"><span>' + ic('check', 18) + '</span><span>Verification code sent to <b>' + esc(V.phoneDestinationMasked) + '</b></span></div>'
-          + '<div class="field"><label for="p-otp">Enter 6-digit Code</label><input class="input otp-input" id="p-otp" type="text" maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="000000"></div>'
-          + '<p class="err" id="auth-err" role="alert"></p>'
-          + '<button class="btn primary" type="submit">Verify & Sign In</button>'
-          + '<div class="btns row2" style="margin-top:4px">'
-          + '<button class="btn ghost sm" type="button" data-a="resend-phone-otp" id="resend-otp-btn">' + (V.phoneCooldown > 0 ? 'Resend in ' + V.phoneCooldown + 's' : 'Resend code') + '</button>'
-          + '<button class="btn ghost sm" type="button" data-a="change-phone-num">Change phone</button>'
-          + '</div>'
-          + '</form>')
-      : '<form id="auth-form" class="stack" novalidate>'
-        + (reg ? field('a-name', 'Full name', 'text', 'name') : '')
-        + field('a-email', 'Email address', 'email', 'email', 'inputmode="email" autocapitalize="off"')
-        + (reg ? field('a-phone', 'Phone number (optional)', 'tel', 'tel', 'inputmode="tel" placeholder="+91 98765 43210"') : '')
-        + field('a-pass', 'Password' + (reg ? ' (10 or more characters)' : ''), 'password', reg ? 'new-password' : 'current-password')
-        + (reg ? '<div class="opts" role="radiogroup" aria-label="Account type">'
-          + '<label class="opt"><input type="radio" name="role" value="buyer" checked><b>I send INR</b><span>Send rupees with escrow protection</span></label>'
-          + '<label class="opt"><input type="radio" name="role" value="merchant"><b>I receive INR</b><span>Receive rupees, release from escrow</span></label></div>' : '')
+    + (V.authMode === 'gmail'
+      ? '<form id="gmail-login-form" class="stack" novalidate>'
+        + '<div class="note good" style="margin-top:2px"><span>' + ic('shield', 18) + '</span><span><b>1-Click Gmail Login</b><br>Instant access with your Google / Gmail account. No OTP verification required.</span></div>'
+        + field('g-email', 'Gmail Address', 'email', 'email', 'inputmode="email" autocomplete="email" placeholder="e.g. yourname@gmail.com" value="' + esc(V.gmailInputVal || '') + '"')
+        + '<div class="opts" role="radiogroup" aria-label="Account type">'
+        + '<label class="opt"><input type="radio" name="gmail-role" value="buyer" checked><b>I send INR (Buyer)</b><span>Instant escrow protection</span></label>'
+        + '<label class="opt"><input type="radio" name="gmail-role" value="merchant"><b>I receive INR (Merchant)</b><span>Receive rupee transfers</span></label></div>'
         + '<p class="err" id="auth-err" role="alert"></p>'
-        + '<button class="btn primary" type="submit">' + (reg ? 'Create account' : 'Sign in') + '</button>'
+        + '<button class="btn primary xl google-btn" type="submit" id="gmail-submit-btn" style="display:flex;align-items:center;justify-content:center;gap:10px;font-size:15px;padding:13px;width:100%">'
+        + '<svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>'
+        + '<span>Click to Log in with Gmail</span>'
+        + '</button>'
+        + '<div class="google-auth-box" style="margin-top:6px">'
+        + '<div id="google-gsi-btn" class="google-gsi-slot"></div>'
+        + '</div>'
         + '</form>'
+      : V.authMode === 'phone'
+        ? (!V.phoneOtpSent
+          ? '<form id="phone-login-request-form" class="stack" novalidate>'
+            + field('p-phone', 'Phone Number', 'tel', 'tel', 'inputmode="tel" placeholder="e.g. 9876543210 or +919876543210" value="' + esc(V.phoneInputVal || '') + '"')
+            + '<div class="note info" style="margin-top:2px"><span>' + ic('shield', 18) + '</span><span>We will send a 6-digit verification code to this phone number via SMS.</span></div>'
+            + '<p class="err" id="auth-err" role="alert"></p>'
+            + '<button class="btn primary" type="submit">Send verification code</button>'
+            + '</form>'
+          : '<form id="phone-login-verify-form" class="stack" novalidate>'
+            + '<div class="note good"><span>' + ic('check', 18) + '</span><span>Verification code sent to <b>' + esc(V.phoneDestinationMasked) + '</b></span></div>'
+            + '<div class="field"><label for="p-otp">Enter 6-digit Code</label><input class="input otp-input" id="p-otp" type="text" maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="000000"></div>'
+            + '<p class="err" id="auth-err" role="alert"></p>'
+            + '<button class="btn primary" type="submit">Verify & Sign In</button>'
+            + '<div class="btns row2" style="margin-top:4px">'
+            + '<button class="btn ghost sm" type="button" data-a="resend-phone-otp" id="resend-otp-btn">' + (V.phoneCooldown > 0 ? 'Resend in ' + V.phoneCooldown + 's' : 'Resend code') + '</button>'
+            + '<button class="btn ghost sm" type="button" data-a="change-phone-num">Change phone</button>'
+            + '</div>'
+            + '</form>')
+        : '<form id="auth-form" class="stack" novalidate>'
+          + (reg ? field('a-name', 'Full name', 'text', 'name') : '')
+          + field('a-email', 'Email address', 'email', 'email', 'inputmode="email" autocapitalize="off"')
+          + (reg ? field('a-phone', 'Phone number (optional)', 'tel', 'tel', 'inputmode="tel" placeholder="+91 98765 43210"') : '')
+          + field('a-pass', 'Password' + (reg ? ' (10 or more characters)' : ''), 'password', reg ? 'new-password' : 'current-password')
+          + (reg ? '<div class="opts" role="radiogroup" aria-label="Account type">'
+            + '<label class="opt"><input type="radio" name="role" value="buyer" checked><b>I send INR</b><span>Send rupees with escrow protection</span></label>'
+            + '<label class="opt"><input type="radio" name="role" value="merchant"><b>I receive INR</b><span>Receive rupees, release from escrow</span></label></div>' : '')
+          + '<p class="err" id="auth-err" role="alert"></p>'
+          + '<button class="btn primary" type="submit">' + (reg ? 'Create account' : 'Sign in') + '</button>'
+          + '</form>'
     )
-    + '<div class="auth-divider"><span>or continue with</span></div>'
-    + '<div class="google-auth-box">'
-    + '<div id="google-gsi-btn" class="google-gsi-slot"></div>'
-    + '<button type="button" class="google-btn" data-a="google-login">'
-    + '<svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>'
-    + '<span>' + (reg ? 'Sign up with Google' : 'Sign in with Google') + '</span>'
-    + '</button>'
-    + '<p class="google-badge-hint">' + ic('shield', 14) + ' <span>Official email verification via Google</span></p>'
-    + '</div>'
+    + (V.authMode !== 'gmail'
+      ? '<div class="auth-divider"><span>or 1-click access</span></div>'
+        + '<div class="google-auth-box">'
+        + '<div id="google-gsi-btn" class="google-gsi-slot"></div>'
+        + '<button type="button" class="google-btn" data-a="auth-mode" data-m="gmail">'
+        + '<svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>'
+        + '<span>Click to Log in with Gmail</span>'
+        + '</button>'
+        + '</div>'
+      : '')
     + '</div>'
     + '</section>'
 
@@ -858,9 +876,8 @@ function accountView() {
     + '<div class="contact-item" style="border-top:1px solid var(--line);padding-top:10px">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">'
     + '<div><div class="muted small" style="margin:0 0 2px">Email Address</div><div style="margin:0;font-weight:600">' + esc(me.email) + '</div></div>'
-    + (me.emailVerified ? pill('good', 'Verified Email', true) : pill('warn', 'Unverified Email', true))
+    + (me.emailVerified ? pill('good', 'Verified Email', true) : pill('info', 'Gmail / Email Account', true))
     + '</div>'
-    + (!me.emailVerified ? '<div style="margin-top:8px"><button class="btn ghost sm" data-a="verify-contact" data-channel="email">Verify Email Address</button></div>' : '')
     + '</div>'
     + '</section>';
 
@@ -1380,31 +1397,21 @@ var A = {
     render(true);
   },
   'verify-contact': function (d) {
-    showVerifyContactModal(d.channel || 'sms');
+    showVerifyContactModal('sms');
   },
   'verify-phone': function () {
     showVerifyContactModal('sms');
   },
-  'verify-email': function () {
-    showVerifyContactModal('email');
+  'gmail-click-login': function () {
+    submitGmailLogin();
   },
   'google-login': async function () {
     var clientId = (S.cfg && S.cfg.googleClientId) || window.__GOOGLE_CLIENT_ID;
     if (clientId && window.google && window.google.accounts && window.google.accounts.id) {
       window.google.accounts.id.prompt();
     } else {
-      var input = prompt('Enter your Google OAuth Client ID (or paste a Google ID token to test verification):');
-      if (!input || !input.trim()) return;
-      input = input.trim();
-      if (input.split('.').length === 3) {
-        return handleGoogleCredential({ credential: input });
-      }
-      window.__GOOGLE_CLIENT_ID = input;
-      if (S.cfg) S.cfg.googleClientId = input;
-      initGoogleAuth();
-      if (window.google && window.google.accounts && window.google.accounts.id) {
-        window.google.accounts.id.prompt();
-      }
+      V.authMode = 'gmail';
+      render(true);
     }
   },
   back: function () { return back(); },
@@ -1613,6 +1620,7 @@ document.addEventListener('submit', function (e) {
   var id = e.target.id;
   run(async function () {
     if (id === 'auth-form') return submitAuth();
+    if (id === 'gmail-login-form') return submitGmailLogin();
     if (id === 'phone-login-request-form') return submitPhoneLoginRequest();
     if (id === 'phone-login-verify-form') return submitPhoneLoginVerify();
     if (id === 'customer-support-form') {
@@ -1731,22 +1739,49 @@ async function submitPhoneLoginVerify() {
   }
 }
 
+async function submitGmailLogin() {
+  var err = $('#auth-err'), inp = $('#g-email');
+  if (err) err.textContent = '';
+  var gEmail = (inp && inp.value || '').trim();
+  if (!gEmail) {
+    if (err) err.textContent = 'Enter your Gmail address';
+    return;
+  }
+  if (!gEmail.includes('@')) {
+    if (err) err.textContent = 'Please enter a valid Gmail address';
+    return;
+  }
+  V.gmailInputVal = gEmail;
+  var r = document.querySelector('input[name=gmail-role]:checked');
+  var role = r ? r.value : 'buyer';
+  try {
+    toast('Logging in with Gmail...');
+    var j = await api('POST', '/auth/google', { email: gEmail, role: role });
+    S.token = j.token;
+    S.me = j.user;
+    lsSet(KEY, S.token);
+    toast('Welcome, ' + j.user.name + '! Logged in with Gmail.');
+    await start();
+  } catch (e) {
+    if (err) err.textContent = fieldMsg(e);
+  }
+}
+
 function showVerifyContactModal(channel) {
   var existing = document.getElementById('otp-modal');
   if (existing) existing.remove();
-  var isSms = channel === 'sms';
-  var targetVal = isSms ? (S.me.phone || '') : S.me.email;
+  var targetVal = S.me.phone || '';
   var div = document.createElement('div');
   div.id = 'otp-modal';
   div.className = 'banned-modal-overlay';
   div.innerHTML = '<div class="banned-modal-card" style="max-width:400px;text-align:left">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
-    + '<h3 style="margin:0;font-size:17px">Verify ' + (isSms ? 'Phone Number' : 'Email Address') + '</h3>'
+    + '<h3 style="margin:0;font-size:17px">Verify Phone Number</h3>'
     + '<button type="button" class="back" id="close-otp-modal" style="width:32px;height:32px">' + ic('x', 18) + '</button>'
     + '</div>'
-    + '<p class="muted small" style="margin:0 0 14px">We will dispatch a secure 6-digit code to verify ownership of this contact.</p>'
+    + '<p class="muted small" style="margin:0 0 14px">We will dispatch a secure 6-digit code via SMS to verify ownership of this mobile phone number.</p>'
     + '<div id="otp-modal-step1">'
-    + (isSms && !S.me.phone
+    + (!S.me.phone
       ? '<div class="field"><label for="m-contact-dest">Enter Phone Number</label><input class="input" id="m-contact-dest" placeholder="e.g. +919876543210"></div>'
       : '<div class="note info"><span>' + ic('shield', 18) + '</span><span>Will send code to <b>' + esc(targetVal) + '</b></span></div>')
     + '<p class="err" id="m-otp-err" role="alert" style="margin-top:8px"></p>'
@@ -1770,11 +1805,11 @@ function showVerifyContactModal(channel) {
       if (err) err.textContent = '';
       var inputEl = document.getElementById('m-contact-dest');
       if (inputEl) dest = inputEl.value.trim();
-      if (!dest) { if (err) err.textContent = 'Destination is required'; return; }
+      if (!dest) { if (err) err.textContent = 'Phone number is required'; return; }
       sendBtn.disabled = true;
       try {
         var r = await api('POST', '/auth/otp/send', {
-          channel: channel,
+          channel: 'sms',
           destination: dest,
           purpose: 'verify_contact'
         });
@@ -1799,13 +1834,13 @@ function showVerifyContactModal(channel) {
       verifyBtn.disabled = true;
       try {
         await api('POST', '/auth/otp/verify', {
-          channel: channel,
+          channel: 'sms',
           destination: dest,
           purpose: 'verify_contact',
           otp: code
         });
         div.remove();
-        toast((isSms ? 'Phone number' : 'Email address') + ' verified successfully!');
+        toast('Phone number verified successfully!');
         await refreshMe();
         render();
       } catch (e) {

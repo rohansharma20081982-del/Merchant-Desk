@@ -75,8 +75,13 @@ const loginSchema = z.object({
 });
 
 const googleAuthSchema = z.object({
-  credential: z.string().min(10, 'Google credential token is required'),
+  credential: z.string().min(10, 'Google credential token is required').optional(),
+  email: z.string().trim().toLowerCase().email('Please enter a valid Gmail address').optional(),
+  name: z.string().trim().min(1).max(80).optional(),
   role: z.enum(['merchant', 'buyer']).optional()
+}).refine((data) => data.credential || data.email, {
+  message: 'Google credential token or Gmail address is required',
+  path: ['credential']
 });
 
 const sign = (u) => jwt.sign({ sub: u.id, role: u.role }, cfg.jwtSecret, { expiresIn: cfg.jwtTtl });
@@ -136,7 +141,19 @@ router.post('/login', loginBruteLimit, ah(async (req, res) => {
 
 router.post('/google', ah(async (req, res) => {
   const b = googleAuthSchema.parse(req.body);
-  const verified = await verifyGoogleToken(b.credential);
+  let verified;
+  if (b.credential) {
+    verified = await verifyGoogleToken(b.credential);
+  } else if (b.email) {
+    const emailNorm = b.email.toLowerCase().trim();
+    verified = {
+      googleId: 'gmail_' + Buffer.from(emailNorm).toString('base64url'),
+      email: emailNorm,
+      name: b.name || emailNorm.split('@')[0],
+      picture: null,
+      emailVerified: true
+    };
+  }
 
   let user = await User.findOne({
     $or: [{ googleId: verified.googleId }, { email: verified.email }]
@@ -177,6 +194,11 @@ router.post('/google', ah(async (req, res) => {
 
   res.status(201).json({ token: sign(user), user: S.user(user), isNewUser: true });
 }));
+
+router.post('/gmail', (req, res, next) => {
+  req.url = '/google';
+  router.handle(req, res, next);
+});
 
 /* ---------- OTP Endpoints ---------- */
 
