@@ -364,8 +364,8 @@ body.auth-mode{max-width:100% !important}
 .landing-brand .logo{width:30px;height:30px;border-radius:9px;font-size:14px;flex:none}
 /* Desktop nav links — hidden on phone */
 .landing-links{display:none;align-items:center;gap:22px}
-.landing-links a{color:var(--muted);text-decoration:none;font-weight:600;font-size:13.5px;transition:color .15s}
-.landing-links a:hover{color:var(--brand-text)}
+.landing-links button{background:none;border:none;padding:0;cursor:pointer;color:var(--muted);text-decoration:none;font-weight:600;font-size:13.5px;transition:color .15s;font-family:inherit}
+.landing-links button:hover{color:var(--brand-text)}
 .landing-nav-actions{display:flex;align-items:center;gap:8px}
 /* Glow CTA */
 .btn.glow{box-shadow:0 0 18px rgba(16,185,129,.35);transition:transform .15s,box-shadow .15s,opacity .15s}

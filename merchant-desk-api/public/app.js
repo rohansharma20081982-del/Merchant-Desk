@@ -416,10 +416,10 @@
       + '<div class="landing-nav-inner">'
       + '<div class="landing-brand"><span class="logo" aria-hidden="true">₹</span><span><b>INR Merchant Desk</b></span></div>'
       + '<nav class="landing-links" aria-label="Landing Navigation">'
-      + '<a href="#features">Features</a>'
-      + '<a href="#how-it-works">How It Works</a>'
-      + '<a href="#security">Security</a>'
-      + '<a href="#limits">Limits</a>'
+      + '<button type="button" data-a="landing-scroll" data-to="features">Features</button>'
+      + '<button type="button" data-a="landing-scroll" data-to="how-it-works">How It Works</button>'
+      + '<button type="button" data-a="landing-scroll" data-to="security">Security</button>'
+      + '<button type="button" data-a="landing-scroll" data-to="limits">Limits</button>'
       + '</nav>'
       + '<div class="landing-nav-actions">'
       + '<button class="back" data-a="toggle-theme" aria-label="Toggle theme" title="Toggle theme" style="width:36px;height:36px;color:var(--muted)">' + ic(isDarkMode() ? 'sun' : 'moon', 18) + '</button>'
@@ -435,7 +435,7 @@
       + '<p class="landing-lead">Send and receive Indian Rupees with zero counterparty risk. KYC-verified merchants, direct UPI settlements, and mathematical escrow guarantee every transfer.</p>'
       + '<div class="landing-cta-row">'
       + '<button class="btn primary xl glow" data-a="scroll-auth">' + ic('lock', 18) + '<span>Open Platform</span></button>'
-      + '<a class="btn ghost xl" href="#how-it-works"><span>How It Works &darr;</span></a>'
+      + '<button type="button" class="btn ghost xl" data-a="landing-scroll" data-to="how-it-works"><span>How It Works &darr;</span></button>'
       + '</div>'
       + '<div class="landing-metrics">'
       + '<div class="metric-item"><b class="num">₹0</b><span>Platform Fee</span></div>'
@@ -557,7 +557,7 @@
       + '<p class="muted small" style="margin:6px 0 0">Direct Indian Rupee peer-to-peer transfer coordination with verified automated escrow.</p>'
       + '</div>'
       + '<div class="landing-footer-links">'
-      + '<div><b>Platform</b><a href="#how-it-works">How It Works</a><a href="#features">Features</a><a href="#limits">Limits</a></div>'
+      + '<div><b>Platform</b><button type="button" class="link" data-a="landing-scroll" data-to="how-it-works">How It Works</button><button type="button" class="link" data-a="landing-scroll" data-to="features">Features</button><button type="button" class="link" data-a="landing-scroll" data-to="limits">Limits</button></div>'
       + '<div><b>Access</b><button class="link" data-a="scroll-auth">Sign In</button><button class="link" data-a="scroll-auth">Create Account</button></div>'
       + '</div>'
       + '</div>'
@@ -1193,8 +1193,28 @@
     var v = $('#view'), keep = v.scrollTop;
     document.body.classList.toggle('auth-mode', !S.me);
     if (!S.me) {
+      // If switching auth modes, only update the auth card to avoid scroll jump and white flash
+      var authCard = v.querySelector('.auth-card');
+      if (authCard && !reset) {
+        var tmp = document.createElement('div');
+        tmp.innerHTML = authView();
+        var newCard = tmp.querySelector('.auth-card');
+        if (newCard) {
+          authCard.innerHTML = newCard.innerHTML;
+          setTimeout(initGoogleAuth, 50);
+          return;
+        }
+      }
       v.innerHTML = authView();
-      v.scrollTop = 0;
+      if (reset === 'auth-switch') {
+        // Scroll to auth section instead of top
+        var authEl = document.getElementById('platform-access');
+        if (authEl) {
+          setTimeout(function () { authEl.scrollIntoView({ behavior: 'auto', block: 'center' }); }, 20);
+        }
+      } else if (reset) {
+        v.scrollTop = 0;
+      }
       setTimeout(initGoogleAuth, 50);
       return;
     }
@@ -1365,7 +1385,7 @@
     tab: function (d) { return go(d.t); },
     filter: function (d) { V.filter = d.f; render(); },
     dstatus: async function (d) { V.dstatus = d.s; await loadTab('disputes'); render(); },
-    'auth-mode': function (d) { V.authMode = d.m; V.emailVerifyPending = null; render(true); },
+    'auth-mode': function (d) { V.authMode = d.m; V.emailVerifyPending = null; render('auth-switch'); },
     'resend-verify-email': async function () {
       if (!V.emailVerifyPending) return;
       try {
@@ -1451,6 +1471,10 @@
         var inp = document.getElementById('a-email');
         if (inp) setTimeout(function () { inp.focus(); }, 350);
       }
+    },
+    'landing-scroll': function (d) {
+      var target = d.to && document.getElementById(d.to);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
     'admin-kyc-filter': async function (d) {
       D.admin.kycFilter = d.f;
@@ -1990,7 +2014,18 @@
   /* ---------- boot ---------- */
   async function boot() {
     applyTheme();
-    try { S.cfg = await api('GET', '/config'); } catch (e) { /* keep defaults */ }
+    // Render the landing page immediately so the user never sees a blank screen
+    render(true);
+    // Try to load config with retries (server/database may still be starting)
+    var retries = 3;
+    for (var i = 0; i < retries; i++) {
+      try { S.cfg = await api('GET', '/config'); break; }
+      catch (e) {
+        if (i < retries - 1) {
+          await new Promise(function (r) { setTimeout(r, 2000); });
+        }
+      }
+    }
     var verified = await checkEmailVerificationLink();
     if (verified) return;
     S.token = lsGet(KEY);
