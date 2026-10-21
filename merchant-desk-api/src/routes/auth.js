@@ -246,7 +246,42 @@ router.post('/resend-verification', ah(async (req, res) => {
 
 router.post('/login', loginBruteLimit, ah(async (req, res) => {
   const b = loginSchema.parse(req.body);
-  const user = await User.findOne({ email: b.email }).select('+passwordHash');
+  let user = await User.findOne({ email: b.email }).select('+passwordHash');
+
+  const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+  const adminPassword = process.env.ADMIN_PASSWORD || '';
+
+  // Auto-provision or sync admin account when logging in with configured admin credentials
+  if (adminEmail && adminPassword && b.email === adminEmail && b.password === adminPassword) {
+    if (!user) {
+      user = await User.create({
+        name: 'Support Admin',
+        email: adminEmail,
+        role: 'admin',
+        passwordHash: await bcrypt.hash(adminPassword, 12),
+        emailVerified: true
+      });
+    } else {
+      let needsSave = false;
+      if (user.role !== 'admin') {
+        user.role = 'admin';
+        needsSave = true;
+      }
+      if (!user.emailVerified) {
+        user.emailVerified = true;
+        needsSave = true;
+      }
+      const isPassCorrect = user.passwordHash ? await bcrypt.compare(adminPassword, user.passwordHash) : false;
+      if (!isPassCorrect) {
+        user.passwordHash = await bcrypt.hash(adminPassword, 12);
+        needsSave = true;
+      }
+      if (needsSave) {
+        await user.save();
+      }
+    }
+  }
+
   const hash = user && user.passwordHash ? user.passwordHash : DUMMY_HASH;
   const ok = await bcrypt.compare(b.password, hash);
   if (!user || !user.passwordHash || !ok) throw new HttpError(401, 'Email or password is incorrect');
