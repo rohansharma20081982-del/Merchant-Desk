@@ -18,8 +18,12 @@ const S = require('../serializers');
 router.use(requireAuth);
 
 /* ---- proof uploads: images and PDFs only, 5 MB each, named <userId>-<random>.<ext> ---- */
-const UPLOAD_DIR = path.resolve(cfg.uploadDir);
-fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+const os = require('os');
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NODE_ENV === 'production');
+const UPLOAD_DIR = isServerless ? path.join(os.tmpdir(), 'uploads') : path.resolve(cfg.uploadDir || 'uploads');
+try {
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+} catch (_) {}
 const EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'application/pdf': 'pdf' };
 
 const upload = multer({

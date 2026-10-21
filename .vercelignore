@@ -1,0 +1,9 @@
+.mongo-data
+**/.mongo-data
+node_modules
+**/node_modules
+.env
+**/.env
+.git
+uploads
+**/uploads
