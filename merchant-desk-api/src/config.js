@@ -1,8 +1,10 @@
 require('dotenv').config();
-const dns = require('node:dns');
-try {
-  dns.setServers(['8.8.8.8', '1.1.1.1']);
-} catch (_) {}
+if (!process.env.VERCEL) {
+  try {
+    const dns = require('node:dns');
+    dns.setServers(['8.8.8.8', '1.1.1.1']);
+  } catch (_) {}
+}
 
 const need = (key) => {
   const v = process.env[key];

@@ -10,7 +10,7 @@ async function connectToDatabase() {
   }
   mongoose.set('strictQuery', true);
   await mongoose.connect(cfg.mongoUri, {
-    serverSelectionTimeoutMS: 5000,
+    serverSelectionTimeoutMS: 15000,
   });
   isConnected = true;
 }
@@ -21,8 +21,9 @@ module.exports = async (req, res) => {
     return app(req, res);
   } catch (err) {
     console.error('Database connection error:', err);
-    const response = { error: 'Database connection failed' };
-    if (cfg.env === 'development') response.details = err.message;
-    res.status(500).json(response);
+    res.status(500).json({
+      error: 'Database connection failed',
+      details: err.message || String(err)
+    });
   }
 };
