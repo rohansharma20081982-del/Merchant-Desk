@@ -1,0 +1,11 @@
+{
+  "name": "merchant-desk-repo",
+  "private": true,
+  "workspaces": [
+    "merchant-desk-api"
+  ],
+  "scripts": {
+    "start": "npm start --workspace=merchant-desk-api",
+    "test": "npm test --workspace=merchant-desk-api"
+  }
+}
