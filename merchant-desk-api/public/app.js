@@ -1194,11 +1194,11 @@
     document.body.classList.toggle('auth-mode', !S.me);
     if (!S.me) {
       // If switching auth modes, only update the auth card to avoid scroll jump and white flash
-      var authCard = v.querySelector('.auth-card');
+      var authCard = v && typeof v.querySelector === 'function' ? v.querySelector('.auth-card') : null;
       if (authCard && !reset) {
         var tmp = document.createElement('div');
         tmp.innerHTML = authView();
-        var newCard = tmp.querySelector('.auth-card');
+        var newCard = tmp.querySelector ? tmp.querySelector('.auth-card') : null;
         if (newCard) {
           authCard.innerHTML = newCard.innerHTML;
           setTimeout(initGoogleAuth, 50);
