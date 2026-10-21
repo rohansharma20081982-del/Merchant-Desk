@@ -24,15 +24,6 @@ const otpVerifySchema = z.object({
   otp: otpCode
 });
 
-const phoneLoginRequestSchema = z.object({
-  phone: phoneInput
-});
-
-const phoneLoginVerifySchema = z.object({
-  phone: phoneInput,
-  otp: otpCode
-});
-
 module.exports = {
   objectId,
   upiId,
@@ -42,7 +33,5 @@ module.exports = {
   phoneInput,
   otpCode,
   otpSendSchema,
-  otpVerifySchema,
-  phoneLoginRequestSchema,
-  phoneLoginVerifySchema
+  otpVerifySchema
 };

@@ -36,7 +36,7 @@ function blank() {
     admin: { kyc: [], kycCounts: { pending: 0, history: 0 }, kycFilter: 'pending', accounts: [], disputes: [], orders: [], users: [] } };
 }
 var D = blank();
-var V = { tab: null, sub: null, stack: [], filter: 'all', authMode: 'login', dstatus: 'review', busy: false, phoneOtpSent: false, phoneDestinationMasked: '', phoneCooldown: 0, phoneInputVal: '', gmailInputVal: '' };
+var V = { tab: null, sub: null, stack: [], filter: 'all', authMode: 'login', dstatus: 'review', busy: false, gmailInputVal: '' };
 
 var ST = {
   awaiting_payment: { l: 'Awaiting payment', c: 'warn' },
@@ -459,7 +459,6 @@ function authView() {
     + '<div class="seg" role="tablist">'
     + '<button type="button" role="tab" aria-selected="' + (V.authMode === 'login') + '" data-a="auth-mode" data-m="login">Sign in</button>'
     + '<button type="button" role="tab" aria-selected="' + (V.authMode === 'gmail') + '" data-a="auth-mode" data-m="gmail">Gmail Login</button>'
-    + '<button type="button" role="tab" aria-selected="' + (V.authMode === 'phone') + '" data-a="auth-mode" data-m="phone">Phone Login</button>'
     + '<button type="button" role="tab" aria-selected="' + (V.authMode === 'register') + '" data-a="auth-mode" data-m="register">Create account</button>'
     + '</div>'
     + (V.authMode === 'gmail'
@@ -478,35 +477,17 @@ function authView() {
         + '<div id="google-gsi-btn" class="google-gsi-slot"></div>'
         + '</div>'
         + '</form>'
-      : V.authMode === 'phone'
-        ? (!V.phoneOtpSent
-          ? '<form id="phone-login-request-form" class="stack" novalidate>'
-            + field('p-phone', 'Phone Number', 'tel', 'tel', 'inputmode="tel" placeholder="e.g. 9876543210 or +919876543210" value="' + esc(V.phoneInputVal || '') + '"')
-            + '<div class="note info" style="margin-top:2px"><span>' + ic('shield', 18) + '</span><span>We will send a 6-digit verification code to this phone number via SMS.</span></div>'
-            + '<p class="err" id="auth-err" role="alert"></p>'
-            + '<button class="btn primary" type="submit">Send verification code</button>'
-            + '</form>'
-          : '<form id="phone-login-verify-form" class="stack" novalidate>'
-            + '<div class="note good"><span>' + ic('check', 18) + '</span><span>Verification code sent to <b>' + esc(V.phoneDestinationMasked) + '</b></span></div>'
-            + '<div class="field"><label for="p-otp">Enter 6-digit Code</label><input class="input otp-input" id="p-otp" type="text" maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="000000"></div>'
-            + '<p class="err" id="auth-err" role="alert"></p>'
-            + '<button class="btn primary" type="submit">Verify & Sign In</button>'
-            + '<div class="btns row2" style="margin-top:4px">'
-            + '<button class="btn ghost sm" type="button" data-a="resend-phone-otp" id="resend-otp-btn">' + (V.phoneCooldown > 0 ? 'Resend in ' + V.phoneCooldown + 's' : 'Resend code') + '</button>'
-            + '<button class="btn ghost sm" type="button" data-a="change-phone-num">Change phone</button>'
-            + '</div>'
-            + '</form>')
-        : '<form id="auth-form" class="stack" novalidate>'
-          + (reg ? field('a-name', 'Full name', 'text', 'name') : '')
-          + field('a-email', 'Email address', 'email', 'email', 'inputmode="email" autocapitalize="off"')
-          + (reg ? field('a-phone', 'Phone number (optional)', 'tel', 'tel', 'inputmode="tel" placeholder="+91 98765 43210"') : '')
-          + field('a-pass', 'Password' + (reg ? ' (10 or more characters)' : ''), 'password', reg ? 'new-password' : 'current-password')
-          + (reg ? '<div class="opts" role="radiogroup" aria-label="Account type">'
-            + '<label class="opt"><input type="radio" name="role" value="buyer" checked><b>I send INR</b><span>Send rupees with escrow protection</span></label>'
-            + '<label class="opt"><input type="radio" name="role" value="merchant"><b>I receive INR</b><span>Receive rupees, release from escrow</span></label></div>' : '')
-          + '<p class="err" id="auth-err" role="alert"></p>'
-          + '<button class="btn primary" type="submit">' + (reg ? 'Create account' : 'Sign in') + '</button>'
-          + '</form>'
+      : '<form id="auth-form" class="stack" novalidate>'
+        + (reg ? field('a-name', 'Full name', 'text', 'name') : '')
+        + field('a-email', 'Email address', 'email', 'email', 'inputmode="email" autocapitalize="off"')
+        + (reg ? field('a-phone', 'Phone number (optional)', 'tel', 'tel', 'inputmode="tel" placeholder="+91 98765 43210"') : '')
+        + field('a-pass', 'Password' + (reg ? ' (10 or more characters)' : ''), 'password', reg ? 'new-password' : 'current-password')
+        + (reg ? '<div class="opts" role="radiogroup" aria-label="Account type">'
+          + '<label class="opt"><input type="radio" name="role" value="buyer" checked><b>I send INR</b><span>Send rupees with escrow protection</span></label>'
+          + '<label class="opt"><input type="radio" name="role" value="merchant"><b>I receive INR</b><span>Receive rupees, release from escrow</span></label></div>' : '')
+        + '<p class="err" id="auth-err" role="alert"></p>'
+        + '<button class="btn primary" type="submit">' + (reg ? 'Create account' : 'Sign in') + '</button>'
+        + '</form>'
     )
     + (V.authMode !== 'gmail'
       ? '<div class="auth-divider"><span>or 1-click access</span></div>'
@@ -1387,15 +1368,7 @@ var A = {
   tab: function (d) { return go(d.t); },
   filter: function (d) { V.filter = d.f; render(); },
   dstatus: async function (d) { V.dstatus = d.s; await loadTab('disputes'); render(); },
-  'auth-mode': function (d) { V.authMode = d.m; V.phoneOtpSent = false; render(true); },
-  'resend-phone-otp': function () {
-    if (V.phoneCooldown > 0) return toast('Please wait ' + V.phoneCooldown + 's before requesting another code');
-    submitPhoneLoginRequest();
-  },
-  'change-phone-num': function () {
-    V.phoneOtpSent = false;
-    render(true);
-  },
+  'auth-mode': function (d) { V.authMode = d.m; render(true); },
   'verify-contact': function (d) {
     showVerifyContactModal('sms');
   },
@@ -1621,8 +1594,6 @@ document.addEventListener('submit', function (e) {
   run(async function () {
     if (id === 'auth-form') return submitAuth();
     if (id === 'gmail-login-form') return submitGmailLogin();
-    if (id === 'phone-login-request-form') return submitPhoneLoginRequest();
-    if (id === 'phone-login-verify-form') return submitPhoneLoginVerify();
     if (id === 'customer-support-form') {
       var inp = $('#support-msg'), text = (inp.value || '').trim();
       if (!text) return;
@@ -1691,53 +1662,7 @@ async function submitAuth() {
   await start();
 }
 
-var phoneTimer = null;
-function startPhoneCooldownTimer() {
-  clearInterval(phoneTimer);
-  phoneTimer = setInterval(function () {
-    if (V.phoneCooldown > 0) {
-      V.phoneCooldown--;
-      var btn = document.getElementById('resend-otp-btn');
-      if (btn) btn.textContent = V.phoneCooldown > 0 ? 'Resend in ' + V.phoneCooldown + 's' : 'Resend code';
-    } else {
-      clearInterval(phoneTimer);
-    }
-  }, 1000);
-}
 
-async function submitPhoneLoginRequest() {
-  var err = $('#auth-err'), inp = $('#p-phone');
-  if (err) err.textContent = '';
-  var rawPhone = (inp && inp.value || '').trim();
-  if (!rawPhone) { if (err) err.textContent = 'Enter your phone number'; return; }
-  V.phoneInputVal = rawPhone;
-  try {
-    var r = await api('POST', '/auth/login/phone/request', { phone: rawPhone });
-    V.phoneOtpSent = true;
-    V.phoneDestinationMasked = r.destinationMasked || rawPhone;
-    V.phoneCooldown = r.cooldownSeconds || 60;
-    startPhoneCooldownTimer();
-    render(true);
-    toast('Verification code sent');
-  } catch (e) {
-    if (err) err.textContent = fieldMsg(e);
-  }
-}
-
-async function submitPhoneLoginVerify() {
-  var err = $('#auth-err'), inp = $('#p-otp');
-  if (err) err.textContent = '';
-  var otp = (inp && inp.value || '').trim();
-  if (!otp || otp.length !== 6) { if (err) err.textContent = 'Enter the 6-digit verification code'; return; }
-  try {
-    var j = await api('POST', '/auth/login/phone/verify', { phone: V.phoneInputVal, otp: otp });
-    S.token = j.token; S.me = j.user; lsSet(KEY, S.token);
-    V.phoneOtpSent = false;
-    await start();
-  } catch (e) {
-    if (err) err.textContent = fieldMsg(e);
-  }
-}
 
 async function submitGmailLogin() {
   var err = $('#auth-err'), inp = $('#g-email');
