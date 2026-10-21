@@ -24,19 +24,26 @@ function csrfProtection(req, res, next) {
 
   // If Origin is provided by browser, verify it
   if (origin) {
-    const isAllowed = cfg.corsOrigins.some((allowed) => {
-      if (allowed === '*') return true;
-      try {
-        const uAllowed = new URL(allowed);
-        const uOrigin = new URL(origin);
-        return uAllowed.origin === uOrigin.origin;
-      } catch (e) {
-        return allowed === origin;
-      }
-    }) || (() => {
+    const isAllowed = (() => {
       try {
         const uOrigin = new URL(origin);
-        return ['localhost', '127.0.0.1'].includes(uOrigin.hostname);
+        // 1. Allow localhost and 127.0.0.1
+        if (['localhost', '127.0.0.1'].includes(uOrigin.hostname)) return true;
+        // 2. Allow all Vercel domains (*.vercel.app)
+        if (uOrigin.hostname.endsWith('.vercel.app')) return true;
+        // 3. Allow same-origin (when origin matches the request host)
+        const host = req.headers['x-forwarded-host'] || req.headers.host;
+        if (host && (uOrigin.host === host || uOrigin.hostname === host.split(':')[0])) return true;
+        // 4. Check explicitly configured CORS_ORIGINS
+        return cfg.corsOrigins.some((allowed) => {
+          if (allowed === '*') return true;
+          try {
+            const uAllowed = new URL(allowed);
+            return uAllowed.origin === uOrigin.origin;
+          } catch (e) {
+            return allowed === origin;
+          }
+        });
       } catch (_) {
         return false;
       }
