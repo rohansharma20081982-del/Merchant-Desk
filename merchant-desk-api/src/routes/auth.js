@@ -104,18 +104,22 @@ router.post('/register', ah(async (req, res) => {
   const rawToken = crypto.randomBytes(32).toString('hex');
   const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
 
-  const user = await User.create({
+  const userFields = {
     name: b.name,
     email: b.email,
-    phone: normalizedPhone,
-    phoneVerified: false,
     role: b.role,
     passwordHash: await bcrypt.hash(b.password, 12),
     authProvider: 'local',
     emailVerified: false,
     emailVerifyToken: tokenHash,
     emailVerifyExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
-  });
+  };
+  if (normalizedPhone) {
+    userFields.phone = normalizedPhone;
+    userFields.phoneVerified = false;
+  }
+
+  const user = await User.create(userFields);
 
   const appBase = req.headers.origin || `http://localhost:${cfg.port || 4000}`;
   const verifyUrl = `${appBase}/#verify_email=${rawToken}`;
